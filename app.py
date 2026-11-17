@@ -325,30 +325,30 @@ def montar_box_score_simples(head_dict, fator_div, fator_mult, casas_decimais):
     # Coluna Neutra (+/-)
     dados["+/-"] = calc(agg["+/-"])
 
-    # Bloco Defensivas (Vermelho)
+    # Bloco Defensivas (Vermelho - usa espaço invisível no nome interno para diferenciar do bloco ofensivo)
     cols_def = {
-        "Opp PTS": calc(agg["PTS_A"]),
-        "Opp FGM": calc(fgm_a),
-        "Opp FGA": calc(fga_a),
-        "Opp FG%": pcts["Opp FG%"],
-        "Opp 2PC": calc(agg["2PM_A"]),
-        "Opp 2PT": calc(agg["2PA_A"]),
-        "Opp 2P%": pcts["Opp 2P%"],
-        "Opp 3PC": calc(agg["3PM_A"]),
-        "Opp 3PT": calc(agg["3PA_A"]),
-        "Opp 3P%": pcts["Opp 3P%"],
-        "Opp LLC": calc(agg["FTM_A"]),
-        "Opp LLT": calc(agg["FTA_A"]),
-        "Opp LL%": pcts["Opp LL%"],
-        "Opp RO": calc(agg["OR_A"]),
-        "Opp RD": calc(agg["DR_A"]),
-        "Opp REB": calc(agg["REB_A"]),
-        "Opp AST": calc(agg["AST_A"]),
-        "Opp TOV": calc(agg["TO_A"]),
-        "Opp STL": calc(agg["STL_A"]),
-        "Opp BLK": calc(agg["BLK_A"]),
-        "Opp F": calc(agg["PF_A"]),
-        "Opp EF": calc(ef_a),
+        "PTS ": calc(agg["PTS_A"]),
+        "FGM ": calc(fgm_a),
+        "FGA ": calc(fga_a),
+        "FG% ": pcts["Opp FG%"],
+        "2PC ": calc(agg["2PM_A"]),
+        "2PT ": calc(agg["2PA_A"]),
+        "2P% ": pcts["Opp 2P%"],
+        "3PC ": calc(agg["3PM_A"]),
+        "3PT ": calc(agg["3PA_A"]),
+        "3P% ": pcts["Opp 3P%"],
+        "LLC ": calc(agg["FTM_A"]),
+        "LLT ": calc(agg["FTA_A"]),
+        "LL% ": pcts["Opp LL%"],
+        "RO ": calc(agg["OR_A"]),
+        "RD ": calc(agg["DR_A"]),
+        "REB ": calc(agg["REB_A"]),
+        "AST ": calc(agg["AST_A"]),
+        "TOV ": calc(agg["TO_A"]),
+        "STL ": calc(agg["STL_A"]),
+        "BLK ": calc(agg["BLK_A"]),
+        "F ": calc(agg["PF_A"]),
+        "EF ": calc(ef_a),
     }
     dados.update(cols_def)
 
@@ -427,16 +427,16 @@ elif modo_exibicao == "Avançadas":
         "ORB%": orb_off,
         "FTA Rate": fta_rate_off,
         "OFFRTG": off_rtg,
-        "Opp eFG%": efg_def,
-        "Opp TOV%": tov_def,
-        "Opp ORB%": orb_def,
-        "Opp FTA Rate": fta_rate_def,
+        "eFG% ": efg_def,
+        "TOV% ": tov_def,
+        "ORB% ": orb_def,
+        "FTA Rate ": fta_rate_def,
         "DEFRTG": def_rtg,
         "NETRTG": (off_rtg - def_rtg).round(1),
     }
     tabela = pd.DataFrame(dados_adv)
     cols_verdes = ["eFG%", "TOV%", "ORB%", "FTA Rate", "OFFRTG"]
-    cols_vermelhas = ["Opp eFG%", "Opp TOV%", "Opp ORB%", "Opp FTA Rate", "DEFRTG"]
+    cols_vermelhas = ["eFG% ", "TOV% ", "ORB% ", "FTA Rate ", "DEFRTG"]
     fmt_decimais = 1
 
 # --- CONGELA A COLUNA LINEUP COMO ÍNDICE SIMPLES ---
@@ -481,26 +481,27 @@ col_config = {
 }
 
 for col in tabela.columns:
-    if col == "+/-":
+    titulo_visivel = col.strip()
+    if titulo_visivel == "+/-":
         formatos[col] = fmt_plus_minus
-        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
-    elif col == "JO":
+        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
+    elif titulo_visivel == "JO":
         formatos[col] = "{:.0f}"
-        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
-    elif "FTA Rate" in col:
+        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
+    elif "FTA Rate" in titulo_visivel:
         formatos[col] = "{:.3f}"
-        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
-    elif "%" in col:
+        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
+    elif "%" in titulo_visivel:
         formatos[col] = "{:.1f}%"
-        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
-    elif col in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
+        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
+    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
         formatos[col] = "{:.1f}"
-        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
-    elif col in ["Time", "Minutos"]:
-        col_config[col] = st.column_config.TextColumn(col, alignment="center")
+        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
+    elif titulo_visivel in ["Time", "Minutos"]:
+        col_config[col] = st.column_config.TextColumn(titulo_visivel, alignment="center")
     else:
         formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
-        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
+        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
 
 tabela_estilizada = (
     tabela.style
