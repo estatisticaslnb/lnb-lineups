@@ -8,6 +8,7 @@ import numpy as np
 
 st.set_page_config(page_title="LNB Lineups", layout="wide")
 
+
 def dur_to_sec(val):
     if pd.isna(val):
         return 0
@@ -28,32 +29,35 @@ def dur_to_sec(val):
         return 0
     return 0
 
+
 def sec_to_dur(sec):
     sec = int(round(sec))
     return f"{sec // 60:02d}:{sec % 60:02d}"
 
+
 def chave_num_atleta(nome_str):
-    # Extrai o primeiro número (ex: "#2 Fulano" -> 2, "#10 Beltrano" -> 10) para ordenação numérica real
     m = re.search(r"\d+", str(nome_str))
     num = int(m.group()) if m else 999999
     return (num, str(nome_str).strip())
+
 
 @st.cache_data
 def load_data():
     arquivos = os.listdir(".")
     planilha = next((f for f in arquivos if f.lower().endswith((".xlsx", ".xls", ".csv"))), None)
-    
+
     if not planilha:
         st.error(f"Nenhuma planilha encontrada no repositório. Arquivos atuais: {arquivos}")
         st.stop()
-        
+
     if planilha.lower().endswith(".csv"):
         df = pd.read_csv(planilha)
     else:
         df = pd.read_excel(planilha)
-        
+
     df["DUR_S"] = df["D"].apply(dur_to_sec)
     return df
+
 
 df = load_data()
 
@@ -72,7 +76,7 @@ opcoes_tamanho = {
     "4 - Quartetos": 4,
     "3 - Trios": 3,
     "2 - Duplas": 2,
-    "1 - Individual": 1
+    "1 - Individual": 1,
 }
 tamanho_label = st.sidebar.selectbox("Tamanho da Combinação", list(opcoes_tamanho.keys()))
 tamanho_comb = opcoes_tamanho[tamanho_label]
@@ -84,7 +88,7 @@ todos_atletas = sorted(
         for p in str(k).split("/")
         if p.strip()
     },
-    key=chave_num_atleta
+    key=chave_num_atleta,
 )
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
@@ -96,7 +100,7 @@ quartos_sel = st.sidebar.multiselect("Períodos", quartos, default=quartos)
 
 modo_exibicao = st.sidebar.radio(
     "Modo de Exibição",
-    ["Total", "Média", "Por 100 Posses", "Advanced"]
+    ["Total", "Média", "Por 100 Posses", "Advanced"],
 )
 
 col_f1, col_f2 = st.sidebar.columns(2)
@@ -113,13 +117,14 @@ if df_filtrado.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
 
-# --- EXPANSÃO DE COMBINAÇÕES (COM ORDENAÇÃO NUMÉRICA DE CAMISA) ---
+
+# --- EXPANSÃO DE COMBINAÇÕES ---
 def gerar_combinacoes(kinteto_str, r):
     if pd.isna(kinteto_str):
         return []
     jogadores = sorted(
         {p.strip() for p in str(kinteto_str).split("/") if p.strip()},
-        key=chave_num_atleta
+        key=chave_num_atleta,
     )
     if not jogadores:
         return []
@@ -128,6 +133,7 @@ def gerar_combinacoes(kinteto_str, r):
     if len(jogadores) < r:
         return []
     return [" / ".join(comb) for comb in combinations(jogadores, r)]
+
 
 df_filtrado["Lineup"] = df_filtrado["Kinteto"].apply(lambda x: gerar_combinacoes(x, tamanho_comb))
 df_exp = df_filtrado.explode("Lineup")
@@ -148,12 +154,12 @@ cols_soma = [
     "DUR_S", "PTS", "2PM", "2PA", "3PM", "3PA", "FTM", "FTA",
     "OR", "DR", "REB", "AST", "TO", "STL", "BLK", "PF",
     "PTS_A", "2PM_A", "2PA_A", "3PM_A", "3PA_A", "FTM_A", "FTA_A",
-    "OR_A", "DR_A", "REB_A", "AST_A", "TO_A", "STL_A", "BLK_A", "PF_A", "+/-"
+    "OR_A", "DR_A", "REB_A", "AST_A", "TO_A", "STL_A", "BLK_A", "PF_A", "+/-",
 ]
 
 agg = df_exp.groupby("Lineup", as_index=False).agg(
     J=("ID", "nunique"),
-    **{c: (c, "sum") for c in cols_soma}
+    **{c: (c, "sum") for c in cols_soma},
 )
 
 # --- CÁLCULO OFICIAL DE POSSES (FÓRMULA LNB: COEFICIENTE 4/9) ---
@@ -198,6 +204,7 @@ pcts = {
     "Opp 3P%": np.where(agg["3PA_A"] > 0, (agg["3PM_A"] / agg["3PA_A"] * 100).round(1), 0.0),
     "Opp LL%": np.where(agg["FTA_A"] > 0, (agg["FTM_A"] / agg["FTA_A"] * 100).round(1), 0.0),
 }
+
 
 def montar_box_score_agrupado(head_dict, fator_div, fator_mult, casas_decimais):
     def calc(serie):
@@ -263,6 +270,7 @@ def montar_box_score_agrupado(head_dict, fator_div, fator_mult, casas_decimais):
     df_out.columns = pd.MultiIndex.from_tuples(df_out.columns)
     return df_out
 
+
 # --- MONTAGEM DA TABELA CONFORME O MODO ---
 if modo_exibicao == "Total":
     head = {
@@ -277,3 +285,100 @@ elif modo_exibicao == "Média":
     head = {
         "Minutos": (agg["DUR_S"] / j_div).apply(sec_to_dur),
         "J": agg["J"],
+    }
+    tabela = montar_box_score_agrupado(head, j_div, 1, 1)
+    fmt_decimais = 1
+
+elif modo_exibicao == "Por 100 Posses":
+    pos_div = agg["POSSES"].replace(0, 1)
+    head = {
+        "Minutos": agg["DUR_S"].apply(sec_to_dur),
+        "Posses ~": agg["POSSES"],
+    }
+    tabela = montar_box_score_agrupado(head, pos_div, 100, 1)
+    fmt_decimais = 1
+
+elif modo_exibicao == "Advanced":
+    pos_div = agg["POSSES"].replace(0, 1)
+    min_float = agg["DUR_S"] / 60.0
+
+    efg_off = np.where(fga > 0, ((fgm + 0.5 * agg["3PM"]) / fga * 100).round(1), 0.0)
+    tov_denom_off = fga + (4 / 9) * agg["FTA"] + agg["TO"]
+    tov_off = np.where(tov_denom_off > 0, (agg["TO"] / tov_denom_off * 100).round(1), 0.0)
+    orb_denom_off = agg["OR"] + agg["DR_A"]
+    orb_off = np.where(orb_denom_off > 0, (agg["OR"] / orb_denom_off * 100).round(1), 0.0)
+    fta_rate_off = np.where(fga > 0, (agg["FTA"] / fga * 100).round(1), 0.0)
+    off_rtg = ((agg["PTS"] / pos_div) * 100).round(1)
+
+    efg_def = np.where(fga_a > 0, ((fgm_a + 0.5 * agg["3PM_A"]) / fga_a * 100).round(1), 0.0)
+    tov_denom_def = fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]
+    tov_def = np.where(tov_denom_def > 0, (agg["TO_A"] / tov_denom_def * 100).round(1), 0.0)
+    orb_denom_def = agg["OR_A"] + agg["DR"]
+    orb_def = np.where(orb_denom_def > 0, (agg["OR_A"] / orb_denom_def * 100).round(1), 0.0)
+    fta_rate_def = np.where(fga_a > 0, (agg["FTA_A"] / fga_a * 100).round(1), 0.0)
+    def_rtg = ((agg["PTS_A"] / pos_div) * 100).round(1)
+
+    pace = np.where(min_float > 0, ((agg["POSSES"] / min_float) * 40).round(1), 0.0)
+
+    dados_adv = {
+        ("", "Minutos"): agg["DUR_S"].apply(sec_to_dur),
+        ("", "Posses ~"): agg["POSSES"],
+        ("", "PACE"): pace,
+        ("Ofensivas", "eFG%"): efg_off,
+        ("Ofensivas", "TOV%"): tov_off,
+        ("Ofensivas", "ORB%"): orb_off,
+        ("Ofensivas", "FTA Rate"): fta_rate_off,
+        ("Ofensivas", "OFFRTG"): off_rtg,
+        ("Defensivas", "eFG%"): efg_def,
+        ("Defensivas", "TOV%"): tov_def,
+        ("Defensivas", "ORB%"): orb_def,
+        ("Defensivas", "FTA Rate"): fta_rate_def,
+        ("Defensivas", "DEFRTG"): def_rtg,
+        ("", "NETRTG"): (off_rtg - def_rtg).round(1),
+    }
+    tabela = pd.DataFrame(dados_adv)
+    tabela.columns = pd.MultiIndex.from_tuples(tabela.columns)
+    fmt_decimais = 1
+
+# --- CONGELA A COLUNA LINEUP COMO ÍNDICE SIMPLES ---
+tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
+
+
+# --- FORMATADORES (INCLUINDO SINAL + / - / 0 SEM SINAL) ---
+def fmt_plus_minus(val):
+    if pd.isna(val):
+        return ""
+    if fmt_decimais == 0:
+        v = int(round(val))
+        return f"+{v}" if v > 0 else ("0" if v == 0 else f"{v}")
+    else:
+        v = round(float(val), 1)
+        if v == 0:
+            return "0.0"
+        return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
+
+
+formatos = {}
+for col in tabela.columns:
+    sub_nome = col[1]
+    if sub_nome == "+/-":
+        formatos[col] = fmt_plus_minus
+    elif sub_nome in ["J", "Posses ~"]:
+        formatos[col] = "{:.0f}"
+    elif "%" in sub_nome or sub_nome in ["PACE", "FTA Rate", "OFFRTG", "DEFRTG", "NETRTG"]:
+        formatos[col] = "{:.1f}"
+    elif sub_nome != "Minutos":
+        formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
+
+tabela_estilizada = (
+    tabela.style
+    .format(formatos)
+    .set_properties(**{"text-align": "center"})
+    .set_table_styles([
+        {"selector": "th.col_heading", "props": [("text-align", "center")]},
+        {"selector": "th.index_name", "props": [("text-align", "left")]},
+        {"selector": "th.row_heading", "props": [("text-align", "left")]},
+    ])
+)
+
+st.dataframe(tabela_estilizada, use_container_width=True)
