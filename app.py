@@ -1,4 +1,5 @@
 import os
+import re
 import datetime
 from itertools import combinations
 import streamlit as st
@@ -13,11 +14,9 @@ def dur_to_sec(val):
     if isinstance(val, datetime.time):
         return val.hour * 60 + val.minute
     if isinstance(val, datetime.timedelta):
-        total_min = int(round(val.total_seconds() / 60))
-        return total_min
+        return int(round(val.total_seconds() / 60))
     if isinstance(val, (int, float)):
-        total_min = int(round(val * 1440))
-        return total_min
+        return int(round(val * 1440))
     try:
         s_val = str(val).strip()
         if " " in s_val:
@@ -32,6 +31,12 @@ def dur_to_sec(val):
 def sec_to_dur(sec):
     sec = int(round(sec))
     return f"{sec // 60:02d}:{sec % 60:02d}"
+
+def chave_num_atleta(nome_str):
+    # Extrai o primeiro número (ex: "#2 Fulano" -> 2, "#10 Beltrano" -> 10) para ordenação numérica real
+    m = re.search(r"\d+", str(nome_str))
+    num = int(m.group()) if m else 999999
+    return (num, str(nome_str).strip())
 
 @st.cache_data
 def load_data():
@@ -72,12 +77,15 @@ opcoes_tamanho = {
 tamanho_label = st.sidebar.selectbox("Tamanho da Combinação", list(opcoes_tamanho.keys()))
 tamanho_comb = opcoes_tamanho[tamanho_label]
 
-todos_atletas = sorted({
-    p.strip()
-    for k in df_time["Kinteto"].dropna()
-    for p in str(k).split("/")
-    if p.strip()
-})
+todos_atletas = sorted(
+    {
+        p.strip()
+        for k in df_time["Kinteto"].dropna()
+        for p in str(k).split("/")
+        if p.strip()
+    },
+    key=chave_num_atleta
+)
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
 jogos = sorted(df_time["ID"].dropna().unique())
@@ -105,11 +113,14 @@ if df_filtrado.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
 
-# --- EXPANSÃO DE COMBINAÇÕES ---
+# --- EXPANSÃO DE COMBINAÇÕES (COM ORDENAÇÃO NUMÉRICA DE CAMISA) ---
 def gerar_combinacoes(kinteto_str, r):
     if pd.isna(kinteto_str):
         return []
-    jogadores = sorted({p.strip() for p in str(kinteto_str).split("/") if p.strip()})
+    jogadores = sorted(
+        {p.strip() for p in str(kinteto_str).split("/") if p.strip()},
+        key=chave_num_atleta
+    )
     if not jogadores:
         return []
     if r == 5:
@@ -266,79 +277,3 @@ elif modo_exibicao == "Média":
     head = {
         "Minutos": (agg["DUR_S"] / j_div).apply(sec_to_dur),
         "J": agg["J"],
-    }
-    tabela = montar_box_score_agrupado(head, j_div, 1, 1)
-    fmt_decimais = 1
-
-elif modo_exibicao == "Por 100 Posses":
-    pos_div = agg["POSSES"].replace(0, 1)
-    head = {
-        "Minutos": agg["DUR_S"].apply(sec_to_dur),
-        "Posses ~": agg["POSSES"],
-    }
-    tabela = montar_box_score_agrupado(head, pos_div, 100, 1)
-    fmt_decimais = 1
-
-elif modo_exibicao == "Advanced":
-    pos_div = agg["POSSES"].replace(0, 1)
-    min_float = agg["DUR_S"] / 60.0
-
-    efg_off = np.where(fga > 0, ((fgm + 0.5 * agg["3PM"]) / fga * 100).round(1), 0.0)
-    tov_denom_off = fga + (4 / 9) * agg["FTA"] + agg["TO"]
-    tov_off = np.where(tov_denom_off > 0, (agg["TO"] / tov_denom_off * 100).round(1), 0.0)
-    orb_denom_off = agg["OR"] + agg["DR_A"]
-    orb_off = np.where(orb_denom_off > 0, (agg["OR"] / orb_denom_off * 100).round(1), 0.0)
-    fta_rate_off = np.where(fga > 0, (agg["FTA"] / fga * 100).round(1), 0.0)
-    off_rtg = ((agg["PTS"] / pos_div) * 100).round(1)
-
-    efg_def = np.where(fga_a > 0, ((fgm_a + 0.5 * agg["3PM_A"]) / fga_a * 100).round(1), 0.0)
-    tov_denom_def = fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]
-    tov_def = np.where(tov_denom_def > 0, (agg["TO_A"] / tov_denom_def * 100).round(1), 0.0)
-    orb_denom_def = agg["OR_A"] + agg["DR"]
-    orb_def = np.where(orb_denom_def > 0, (agg["OR_A"] / orb_denom_def * 100).round(1), 0.0)
-    fta_rate_def = np.where(fga_a > 0, (agg["FTA_A"] / fga_a * 100).round(1), 0.0)
-    def_rtg = ((agg["PTS_A"] / pos_div) * 100).round(1)
-
-    pace = np.where(min_float > 0, ((agg["POSSES"] / min_float) * 40).round(1), 0.0)
-
-    dados_adv = {
-        ("", "Minutos"): agg["DUR_S"].apply(sec_to_dur),
-        ("", "Posses ~"): agg["POSSES"],
-        ("", "PACE"): pace,
-        ("Ofensivas", "eFG%"): efg_off,
-        ("Ofensivas", "TOV%"): tov_off,
-        ("Ofensivas", "ORB%"): orb_off,
-        ("Ofensivas", "FTA Rate"): fta_rate_off,
-        ("Ofensivas", "OFFRTG"): off_rtg,
-        ("Defensivas", "eFG%"): efg_def,
-        ("Defensivas", "TOV%"): tov_def,
-        ("Defensivas", "ORB%"): orb_def,
-        ("Defensivas", "FTA Rate"): fta_rate_def,
-        ("Defensivas", "DEFRTG"): def_rtg,
-        ("", "NETRTG"): (off_rtg - def_rtg).round(1),
-    }
-    tabela = pd.DataFrame(dados_adv)
-    tabela.columns = pd.MultiIndex.from_tuples(tabela.columns)
-    fmt_decimais = 1
-
-# --- CONGELA A COLUNA LINEUP COMO ÍNDICE SIMPLES E CENTRALIZA DADOS ---
-tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
-
-formatos = {}
-for col in tabela.columns:
-    sub_nome = col[1]
-    if sub_nome in ["J", "Posses ~"]:
-        formatos[col] = "{:.0f}"
-    elif "%" in sub_nome or sub_nome in ["PACE", "FTA Rate", "OFFRTG", "DEFRTG", "NETRTG"]:
-        formatos[col] = "{:.1f}"
-    elif sub_nome != "Minutos":
-        formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
-
-tabela_estilizada = (
-    tabela.style
-    .format(formatos)
-    .set_properties(**{"text-align": "center"})
-    .set_table_styles([{"selector": "th", "props": [("text-align", "center")]}])
-)
-
-st.dataframe(tabela_estilizada, use_container_width=True)
