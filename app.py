@@ -109,7 +109,7 @@ modo_exibicao = st.sidebar.radio(
 
 col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
-min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=5)
+min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=1)
 
 # --- FILTRAGEM INICIAL ---
 df_filtrado = df_time[
