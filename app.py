@@ -10,28 +10,21 @@ st.set_page_config(page_title="LNB Lineups", layout="wide")
 def dur_to_sec(val):
     if pd.isna(val):
         return 0
-    if isinstance(val, datetime.timedelta):
-        total = int(val.total_seconds())
-        if total >= 3600 and total % 60 == 0:
-            return total // 60
-        return total
     if isinstance(val, datetime.time):
-        if val.hour > 0 and val.second == 0:
-            return val.hour * 60 + val.minute
-        return val.minute * 60 + val.second
+        return val.hour * 60 + val.minute
+    if isinstance(val, datetime.timedelta):
+        total_min = int(round(val.total_seconds() / 60))
+        return total_min
+    if isinstance(val, (int, float)):
+        total_min = int(round(val * 1440))
+        return total_min
     try:
         s_val = str(val).strip()
         if " " in s_val:
             s_val = s_val.split(" ")[-1]
         parts = [int(float(x)) for x in s_val.split(":")]
-        if len(parts) == 2:
+        if len(parts) >= 2:
             return parts[0] * 60 + parts[1]
-        if len(parts) == 3:
-            if parts[0] == 0:
-                return parts[1] * 60 + parts[2]
-            if parts[2] == 0:
-                return parts[0] * 60 + parts[1]
-            return parts[1] * 60 + parts[2]
     except Exception:
         return 0
     return 0
