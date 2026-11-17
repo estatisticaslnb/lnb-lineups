@@ -114,17 +114,24 @@ if df_filtrado.empty:
 
 # --- EXPANSÃO DE COMBINAÇÕES ---
 def gerar_combinacoes(kinteto_str, r):
+    if pd.isna(kinteto_str):
+        return []
     jogadores = sorted({p.strip() for p in str(kinteto_str).split("/") if p.strip()})
+    if not jogadores:
+        return []
+    if r == 5:
+        return [" / ".join(jogadores)]
     if len(jogadores) < r:
-        return [" / ".join(jogadores)] if r == 5 else []
+        return []
     return [" / ".join(comb) for comb in combinations(jogadores, r)]
 
 df_filtrado["Lineup"] = df_filtrado["Kinteto"].apply(lambda x: gerar_combinacoes(x, tamanho_comb))
-df_exp = df_filtrado.explode("Lineup").dropna(subset=["Lineup"])
+df_exp = df_filtrado.explode("Lineup")
+df_exp = df_exp[df_exp["Lineup"].notna() & (df_exp["Lineup"] != "")]
 
 if atletas_sel:
     mask = df_exp["Lineup"].apply(
-        lambda l: all(a in [p.strip() for p in l.split("/")] for a in atletas_sel)
+        lambda l: all(a in [p.strip() for p in str(l).split("/")] for a in atletas_sel)
     )
     df_exp = df_exp[mask]
 
@@ -244,4 +251,101 @@ def montar_box_score_agrupado(head_dict, fator_div, fator_mult, casas_decimais):
     dados[("Defensivas", "AST")] = calc(agg["AST_A"])
     dados[("Defensivas", "TOV")] = calc(agg["TO_A"])
     dados[("Defensivas", "STL")] = calc(agg["STL_A"])
-    dados[("Defensivas", "BLK")]
+    dados[("Defensivas", "BLK")] = calc(agg["BLK_A"])
+    dados[("Defensivas", "F")] = calc(agg["PF_A"])
+    dados[("Defensivas", "EF")] = calc(ef_a)
+
+    df_out = pd.DataFrame(dados)
+    df_out.columns = pd.MultiIndex.from_tuples(df_out.columns)
+    return df_out
+
+# --- MONTAGEM DA TABELA CONFORME O MODO ---
+if modo_exibicao == "Total":
+    head = {
+        "Minutos": agg["DUR_S"].apply(sec_to_dur),
+        "J": agg["J"],
+    }
+    tabela = montar_box_score_agrupado(head, 1, 1, 0)
+    fmt_decimais = 0
+
+elif modo_exibicao == "Média":
+    j_div = agg["J"].replace(0, 1)
+    head = {
+        "Minutos": (agg["DUR_S"] / j_div).apply(sec_to_dur),
+        "J": agg["J"],
+    }
+    tabela = montar_box_score_agrupado(head, j_div, 1, 1)
+    fmt_decimais = 1
+
+elif modo_exibicao == "Por 100 Posses":
+    pos_div = agg["POSSES"].replace(0, 1)
+    head = {
+        "Minutos": agg["DUR_S"].apply(sec_to_dur),
+        "Posses ~": agg["POSSES"],
+    }
+    tabela = montar_box_score_agrupado(head, pos_div, 100, 1)
+    fmt_decimais = 1
+
+elif modo_exibicao == "Advanced":
+    pos_div = agg["POSSES"].replace(0, 1)
+    min_float = agg["DUR_S"] / 60.0
+
+    efg_off = np.where(fga > 0, ((fgm + 0.5 * agg["3PM"]) / fga * 100).round(1), 0.0)
+    tov_denom_off = fga + (4 / 9) * agg["FTA"] + agg["TO"]
+    tov_off = np.where(tov_denom_off > 0, (agg["TO"] / tov_denom_off * 100).round(1), 0.0)
+    orb_denom_off = agg["OR"] + agg["DR_A"]
+    orb_off = np.where(orb_denom_off > 0, (agg["OR"] / orb_denom_off * 100).round(1), 0.0)
+    fta_rate_off = np.where(fga > 0, (agg["FTA"] / fga * 100).round(1), 0.0)
+    off_rtg = ((agg["PTS"] / pos_div) * 100).round(1)
+
+    efg_def = np.where(fga_a > 0, ((fgm_a + 0.5 * agg["3PM_A"]) / fga_a * 100).round(1), 0.0)
+    tov_denom_def = fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]
+    tov_def = np.where(tov_denom_def > 0, (agg["TO_A"] / tov_denom_def * 100).round(1), 0.0)
+    orb_denom_def = agg["OR_A"] + agg["DR"]
+    orb_def = np.where(orb_denom_def > 0, (agg["OR_A"] / orb_denom_def * 100).round(1), 0.0)
+    fta_rate_def = np.where(fga_a > 0, (agg["FTA_A"] / fga_a * 100).round(1), 0.0)
+    def_rtg = ((agg["PTS_A"] / pos_div) * 100).round(1)
+
+    pace = np.where(min_float > 0, ((agg["POSSES"] / min_float) * 40).round(1), 0.0)
+
+    dados_adv = {
+        ("", "Minutos"): agg["DUR_S"].apply(sec_to_dur),
+        ("", "Posses ~"): agg["POSSES"],
+        ("", "PACE"): pace,
+        ("Ofensivas", "eFG%"): efg_off,
+        ("Ofensivas", "TOV%"): tov_off,
+        ("Ofensivas", "ORB%"): orb_off,
+        ("Ofensivas", "FTA Rate"): fta_rate_off,
+        ("Ofensivas", "OFFRTG"): off_rtg,
+        ("Defensivas", "eFG%"): efg_def,
+        ("Defensivas", "TOV%"): tov_def,
+        ("Defensivas", "ORB%"): orb_def,
+        ("Defensivas", "FTA Rate"): fta_rate_def,
+        ("Defensivas", "DEFRTG"): def_rtg,
+        ("", "NETRTG"): (off_rtg - def_rtg).round(1),
+    }
+    tabela = pd.DataFrame(dados_adv)
+    tabela.columns = pd.MultiIndex.from_tuples(tabela.columns)
+    fmt_decimais = 1
+
+# --- CONGELA A COLUNA LINEUP COMO ÍNDICE SIMPLES E CENTRALIZA DADOS ---
+tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
+
+formatos = {}
+for col in tabela.columns:
+    sub_nome = col[1]
+    if sub_nome in ["J", "Posses ~"]:
+        formatos[col] = "{:.0f}"
+    elif "%" in sub_nome or sub_nome in ["PACE", "FTA Rate", "OFFRTG", "DEFRTG", "NETRTG"]:
+        formatos[col] = "{:.1f}"
+    elif sub_nome != "Minutos":
+        formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
+
+tabela_estilizada = (
+    tabela.style
+    .format(formatos)
+    .set_properties(**{"text-align": "center"})
+    .set_table_styles([{"selector": "th", "props": [("text-align", "center")]}])
+)
+
+st.dataframe(tabela_estilizada, use_container_width=True)
