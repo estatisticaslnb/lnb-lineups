@@ -9,6 +9,55 @@ import numpy as np
 st.set_page_config(page_title="LNB Lineups", layout="wide")
 
 
+def encontrar_imagem(prefixo):
+    arquivos = os.listdir(".")
+    for f in arquivos:
+        nome_lower = f.lower()
+        if nome_lower.startswith(prefixo.lower()) and nome_lower.endswith((".png", ".jpg", ".jpeg", ".webp")):
+            return f
+    return None
+
+
+# --- IMAGEM DE CABEÇALHO / LOGO ---
+img_cabecalho = encontrar_imagem("headerNBB")
+if img_cabecalho:
+    st.image(img_cabecalho, use_container_width=True)
+
+
+MAPA_TIMES = {
+    "MIN": "MINAS",
+    "PIN": "PINHEIROS",
+    "MOG": "MOGI",
+    "FLA": "FLAMENGO",
+    "FRA": "FRANCA",
+    "SES": "FRANCA",
+    "UFC": "UNIFACISA",
+    "UNI": "UNIFACISA",
+    "COR": "CORINTHIANS",
+    "BRA": "BRASILIA",
+    "BSB": "BRASILIA",
+    "BAU": "BAURU",
+    "UCO": "UNICO",
+    "UNC": "UNICO",
+    "CRU": "CRUZEIRO",
+    "SJO": "SAO JOSE",
+    "SJC": "SAO JOSE",
+    "PAU": "PAULISTANO",
+    "CAP": "PAULISTANO",
+    "BOT": "BOTAFOGO",
+    "OSA": "OSASCO",
+    "PAT": "PATO",
+    "CEA": "B. CEARENSE",
+    "FCE": "B. CEARENSE",
+    "CAX": "CAXIAS",
+}
+
+
+def nome_completo_time(sigla):
+    s = str(sigla).strip().upper()
+    return MAPA_TIMES.get(s, str(sigla).strip())
+
+
 def dur_to_sec(val):
     if pd.isna(val):
         return 0
@@ -66,11 +115,12 @@ st.title("LNB Lineups")
 # --- BARRA LATERAL (FILTROS) ---
 st.sidebar.header("Filtros")
 
-todos_times = sorted(df["Time"].dropna().unique())
+todos_times = sorted(df["Time"].dropna().unique(), key=nome_completo_time)
 times_sel = st.sidebar.multiselect(
     "Equipe(s) (vazio = Todos os Times)",
     todos_times,
-    default=[]
+    default=[],
+    format_func=nome_completo_time
 )
 
 df_time = df[df["Time"].isin(times_sel)].copy() if times_sel else df.copy()
@@ -395,3 +445,9 @@ for col in tabela.columns:
 tabela_estilizada = tabela.style.format(formatos)
 
 st.dataframe(tabela_estilizada, use_container_width=True)
+
+# --- IMAGEM DE RODAPÉ ---
+img_rodape = encontrar_imagem("footerNBB")
+if img_rodape:
+    st.markdown("---")
+    st.image(img_rodape, use_container_width=True)
