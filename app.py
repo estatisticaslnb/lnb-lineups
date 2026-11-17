@@ -104,12 +104,12 @@ quartos_sel = st.sidebar.multiselect("Períodos", quartos, default=quartos)
 
 modo_exibicao = st.sidebar.radio(
     "Modo de Exibição",
-    ["Total", "Média", "Por 40 Minutos", "Por 100 Posses", "Advanced"],
+    ["Total", "Média", "Por 40 Minutos", "Por 100 Posses", "Avançadas"],
 )
 
 col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
-min_posses = col_f2.number_input("Mín. Posses", min_value=0, value=0, step=5)
+min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=5)
 
 # --- FILTRAGEM INICIAL ---
 df_filtrado = df_time[
@@ -162,11 +162,11 @@ cols_soma = [
 ]
 
 agg = df_exp.groupby(["Time", "Lineup"], as_index=False).agg(
-    J=("ID", "nunique"),
+    JO=("ID", "nunique"),
     **{c: (c, "sum") for c in cols_soma},
 )
 
-# --- CÁLCULO OFICIAL DE POSSES (FÓRMULA LNB: COEFICIENTE 4/9) ---
+# --- CÁLCULO OFICIAL DE POSSES EM SEGUNDO PLANO (FÓRMULA LNB: COEFICIENTE 4/9) ---
 fga = agg["2PA"] + agg["3PA"]
 fgm = agg["2PM"] + agg["3PM"]
 fga_a = agg["2PA_A"] + agg["3PA_A"]
@@ -176,11 +176,11 @@ posses_off = fga + (4 / 9) * agg["FTA"] + agg["TO"] - agg["OR"]
 posses_def = fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"] - agg["OR_A"]
 agg["POSSES"] = ((posses_off + posses_def) / 2).round().astype(int)
 
-# --- FILTROS DE AMOSTRA MÍNIMA ---
-agg = agg[(agg["J"] >= min_jogos) & (agg["POSSES"] >= min_posses)].copy()
+# --- FILTROS DE AMOSTRA MÍNIMA (JOGOS E MINUTOS) ---
+agg = agg[(agg["JO"] >= min_jogos) & ((agg["DUR_S"] / 60.0) >= min_minutos)].copy()
 
 if agg.empty:
-    st.warning("Nenhum lineup atingiu o mínimo de jogos/posses selecionado.")
+    st.warning("Nenhum lineup atingiu o mínimo de jogos/minutos selecionado.")
     st.stop()
 
 agg = agg.sort_values(by="DUR_S", ascending=False).reset_index(drop=True)
@@ -280,19 +280,19 @@ if modo_exibicao == "Total":
     head = {
         "Time": agg["Time"],
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
-        "J": agg["J"],
+        "JO": agg["JO"],
     }
     tabela = montar_box_score_agrupado(head, 1, 1, 0)
     fmt_decimais = 0
 
 elif modo_exibicao == "Média":
-    j_div = agg["J"].replace(0, 1)
+    jo_div = agg["JO"].replace(0, 1)
     head = {
         "Time": agg["Time"],
-        "Minutos": (agg["DUR_S"] / j_div).apply(sec_to_dur),
-        "J": agg["J"],
+        "Minutos": (agg["DUR_S"] / jo_div).apply(sec_to_dur),
+        "JO": agg["JO"],
     }
-    tabela = montar_box_score_agrupado(head, j_div, 1, 1)
+    tabela = montar_box_score_agrupado(head, jo_div, 1, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 40 Minutos":
@@ -300,7 +300,7 @@ elif modo_exibicao == "Por 40 Minutos":
     head = {
         "Time": agg["Time"],
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
-        "J": agg["J"],
+        "JO": agg["JO"],
     }
     tabela = montar_box_score_agrupado(head, min_div, 40, 1)
     fmt_decimais = 1
@@ -310,12 +310,12 @@ elif modo_exibicao == "Por 100 Posses":
     head = {
         "Time": agg["Time"],
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
-        "Posses ~": agg["POSSES"],
+        "JO": agg["JO"],
     }
     tabela = montar_box_score_agrupado(head, pos_div, 100, 1)
     fmt_decimais = 1
 
-elif modo_exibicao == "Advanced":
+elif modo_exibicao == "Avançadas":
     pos_div = agg["POSSES"].replace(0, 1)
     min_float = agg["DUR_S"] / 60.0
 
@@ -340,7 +340,7 @@ elif modo_exibicao == "Advanced":
     dados_adv = {
         ("", "Time"): agg["Time"],
         ("", "Minutos"): agg["DUR_S"].apply(sec_to_dur),
-        ("", "Posses ~"): agg["POSSES"],
+        ("", "JO"): agg["JO"],
         ("", "PACE"): pace,
         ("Ofensivas", "eFG%"): efg_off,
         ("Ofensivas", "TOV%"): tov_off,
@@ -362,7 +362,7 @@ elif modo_exibicao == "Advanced":
 tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
 
 
-# --- FORMATADORES (INCLUINDO SINAL + / - / 0 SEM SINAL) ---
+# --- FORMATAÇÃO DE EXIBIÇÃO E CENTRALIZAÇÃO FORÇADA ---
 def fmt_plus_minus(val):
     if pd.isna(val):
         return ""
@@ -376,34 +376,25 @@ def fmt_plus_minus(val):
         return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
 
 
-formatos = {}
+tabela_fmt = tabela.copy()
 col_config = {
     "_index": st.column_config.TextColumn("Lineup", alignment="left")
 }
 
-for idx, col in enumerate(tabela.columns, start=1):
+for idx, col in enumerate(tabela_fmt.columns, start=1):
     sub_nome = col[1]
     if sub_nome == "+/-":
-        formatos[col] = fmt_plus_minus
-    elif sub_nome in ["J", "Posses ~"]:
-        formatos[col] = "{:.0f}"
+        tabela_fmt[col] = tabela_fmt[col].apply(fmt_plus_minus)
+    elif sub_nome == "JO":
+        tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{int(round(x))}")
     elif "%" in sub_nome or sub_nome in ["PACE", "FTA Rate", "OFFRTG", "DEFRTG", "NETRTG"]:
-        formatos[col] = "{:.1f}"
+        tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{float(x):.1f}")
     elif sub_nome not in ["Time", "Minutos"]:
-        formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
+        if fmt_decimais == 0:
+            tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{int(round(x))}")
+        else:
+            tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{float(x):.1f}")
 
-    # No MultiIndex, o Streamlit usa a posição numérica em string ("1", "2", ...) no column_config
-    col_config[str(idx)] = st.column_config.Column(alignment="center")
+    col_config[str(idx)] = st.column_config.TextColumn(alignment="center")
 
-tabela_estilizada = (
-    tabela.style
-    .format(formatos)
-    .set_properties(**{"text-align": "center"})
-    .set_table_styles([
-        {"selector": "th.col_heading", "props": [("text-align", "center")]},
-        {"selector": "th.index_name", "props": [("text-align", "left")]},
-        {"selector": "th.row_heading", "props": [("text-align", "left")]},
-    ])
-)
-
-st.dataframe(tabela_estilizada, column_config=col_config, use_container_width=True)
+st.dataframe(tabela_fmt, column_config=col_config, use_container_width=True)
