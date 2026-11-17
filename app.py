@@ -502,7 +502,7 @@ tabela_estilizada = (
     .set_properties(subset=cols_vermelhas, **{"background-color": "rgba(231, 76, 60, 0.16)"})
 )
 
-altura_tabela = min(max(len(tabela) * 35 + 42, 180), 750)
+altura_tabela = min(max(len(tabela) * 35 + 42, 180), 560)
 st.dataframe(tabela_estilizada, column_config=col_config, height=altura_tabela, use_container_width=True)
 
 # --- RODAPÉ COM IMAGEM ---
