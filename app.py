@@ -319,7 +319,6 @@ elif modo_exibicao == "Avançadas":
     pos_div = agg["POSSES"].replace(0, 1)
     min_float = agg["DUR_S"] / 60.0
 
-    # Four Factors Ofensivos (TOV% com denominador arredondado: ARRED(FGA + 4/9*FTA + TOV; 0))
     efg_off = np.where(fga > 0, ((fgm + 0.5 * agg["3PM"]) / fga * 100).round(1), 0.0)
     tov_denom_off = (fga + (4 / 9) * agg["FTA"] + agg["TO"]).round(0)
     tov_off = np.where(tov_denom_off > 0, (agg["TO"] / tov_denom_off * 100).round(1), 0.0)
@@ -328,7 +327,6 @@ elif modo_exibicao == "Avançadas":
     fta_rate_off = np.where(fga > 0, (agg["FTA"] / fga).round(3), 0.0)
     off_rtg = ((agg["PTS"] / pos_div) * 100).round(1)
 
-    # Four Factors Defensivos (TOV% com denominador arredondado: ARRED(Opp_FGA + 4/9*Opp_FTA + Opp_TOV; 0))
     efg_def = np.where(fga_a > 0, ((fgm_a + 0.5 * agg["3PM_A"]) / fga_a * 100).round(1), 0.0)
     tov_denom_def = (fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]).round(0)
     tov_def = np.where(tov_denom_def > 0, (agg["TO_A"] / tov_denom_def * 100).round(1), 0.0)
@@ -364,7 +362,7 @@ elif modo_exibicao == "Avançadas":
 tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
 
 
-# --- FORMATAÇÃO DE EXIBIÇÃO E CENTRALIZAÇÃO FORÇADA ---
+# --- FORMATAÇÃO VISUAL PRESERVANDO OS VALORES NUMÉRICOS PARA ORDENAÇÃO ---
 def fmt_plus_minus(val):
     if pd.isna(val):
         return ""
@@ -378,27 +376,22 @@ def fmt_plus_minus(val):
         return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
 
 
-tabela_fmt = tabela.copy()
-col_config = {
-    "_index": st.column_config.TextColumn("Lineup", alignment="left")
-}
-
-for idx, col in enumerate(tabela_fmt.columns, start=1):
+formatos = {}
+for col in tabela.columns:
     sub_nome = col[1]
     if sub_nome == "+/-":
-        tabela_fmt[col] = tabela_fmt[col].apply(fmt_plus_minus)
+        formatos[col] = fmt_plus_minus
     elif sub_nome == "JO":
-        tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{int(round(x))}")
+        formatos[col] = "{:.0f}"
     elif sub_nome == "FTA Rate":
-        tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{float(x):.3f}")
-    elif "%" in sub_nome or sub_nome in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
-        tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{float(x):.1f}")
+        formatos[col] = "{:.3f}"
+    elif "%" in sub_nome:
+        formatos[col] = "{:.1f}%"
+    elif sub_nome in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
+        formatos[col] = "{:.1f}"
     elif sub_nome not in ["Time", "Minutos"]:
-        if fmt_decimais == 0:
-            tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{int(round(x))}")
-        else:
-            tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{float(x):.1f}")
+        formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
 
-    col_config[str(idx)] = st.column_config.TextColumn(alignment="center")
+tabela_estilizada = tabela.style.format(formatos)
 
-st.dataframe(tabela_fmt, column_config=col_config, use_container_width=True)
+st.dataframe(tabela_estilizada, use_container_width=True)
