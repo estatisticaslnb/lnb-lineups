@@ -134,6 +134,11 @@ st.title("LNB Lineups")
 # --- BARRA LATERAL (FILTROS) ---
 st.sidebar.header("Filtros")
 
+modo_exibicao = st.sidebar.selectbox(
+    "Modo de Exibição",
+    ["Total", "Média", "Por 40 Minutos", "Por 100 Posses", "Avançadas"],
+)
+
 todos_times = sorted(df["Time"].dropna().unique(), key=nome_completo_time)
 times_sel = st.sidebar.multiselect(
     "Equipe(s) (vazio = Todos os Times)",
@@ -170,11 +175,6 @@ jogos_sel = st.sidebar.multiselect("Jogos", jogos, default=jogos)
 
 quartos = sorted(df_time["P"].dropna().unique())
 quartos_sel = st.sidebar.multiselect("Períodos", quartos, default=quartos)
-
-modo_exibicao = st.sidebar.radio(
-    "Modo de Exibição",
-    ["Total", "Média", "Por 40 Minutos", "Por 100 Posses", "Avançadas"],
-)
 
 col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
@@ -279,69 +279,73 @@ pcts = {
 }
 
 
-def montar_box_score_agrupado(head_dict, fator_div, fator_mult, casas_decimais):
+def montar_box_score_simples(head_dict, fator_div, fator_mult, casas_decimais):
     def calc(serie):
         res = (serie / fator_div) * fator_mult
         return res.round(0).astype(int) if casas_decimais == 0 else res.round(casas_decimais)
 
     dados = {}
     for col_nome, valores in head_dict.items():
-        dados[("", col_nome)] = valores
+        dados[col_nome] = valores
 
-    # Bloco Ofensivas
-    dados[("Ofensivas", "PTS")] = calc(agg["PTS"])
-    dados[("Ofensivas", "FGM")] = calc(fgm)
-    dados[("Ofensivas", "FGA")] = calc(fga)
-    dados[("Ofensivas", "FG%")] = pcts["FG%"]
-    dados[("Ofensivas", "2PC")] = calc(agg["2PM"])
-    dados[("Ofensivas", "2PT")] = calc(agg["2PA"])
-    dados[("Ofensivas", "2P%")] = pcts["2P%"]
-    dados[("Ofensivas", "3PC")] = calc(agg["3PM"])
-    dados[("Ofensivas", "3PT")] = calc(agg["3PA"])
-    dados[("Ofensivas", "3P%")] = pcts["3P%"]
-    dados[("Ofensivas", "LLC")] = calc(agg["FTM"])
-    dados[("Ofensivas", "LLT")] = calc(agg["FTA"])
-    dados[("Ofensivas", "LL%")] = pcts["LL%"]
-    dados[("Ofensivas", "RO")] = calc(agg["OR"])
-    dados[("Ofensivas", "RD")] = calc(agg["DR"])
-    dados[("Ofensivas", "REB")] = calc(agg["REB"])
-    dados[("Ofensivas", "AST")] = calc(agg["AST"])
-    dados[("Ofensivas", "TOV")] = calc(agg["TO"])
-    dados[("Ofensivas", "STL")] = calc(agg["STL"])
-    dados[("Ofensivas", "BLK")] = calc(agg["BLK"])
-    dados[("Ofensivas", "F")] = calc(agg["PF"])
-    dados[("Ofensivas", "EF")] = calc(ef)
+    # Bloco Ofensivas (Verde)
+    cols_off = {
+        "PTS": calc(agg["PTS"]),
+        "FGM": calc(fgm),
+        "FGA": calc(fga),
+        "FG%": pcts["FG%"],
+        "2PC": calc(agg["2PM"]),
+        "2PT": calc(agg["2PA"]),
+        "2P%": pcts["2P%"],
+        "3PC": calc(agg["3PM"]),
+        "3PT": calc(agg["3PA"]),
+        "3P%": pcts["3P%"],
+        "LLC": calc(agg["FTM"]),
+        "LLT": calc(agg["FTA"]),
+        "LL%": pcts["LL%"],
+        "RO": calc(agg["OR"]),
+        "RD": calc(agg["DR"]),
+        "REB": calc(agg["REB"]),
+        "AST": calc(agg["AST"]),
+        "TOV": calc(agg["TO"]),
+        "STL": calc(agg["STL"]),
+        "BLK": calc(agg["BLK"]),
+        "F": calc(agg["PF"]),
+        "EF": calc(ef),
+    }
+    dados.update(cols_off)
 
     # Coluna Neutra (+/-)
-    dados[("", "+/-")] = calc(agg["+/-"])
+    dados["+/-"] = calc(agg["+/-"])
 
-    # Bloco Defensivas
-    dados[("Defensivas", "PTS")] = calc(agg["PTS_A"])
-    dados[("Defensivas", "FGM")] = calc(fgm_a)
-    dados[("Defensivas", "FGA")] = calc(fga_a)
-    dados[("Defensivas", "FG%")] = pcts["Opp FG%"]
-    dados[("Defensivas", "2PC")] = calc(agg["2PM_A"])
-    dados[("Defensivas", "2PT")] = calc(agg["2PA_A"])
-    dados[("Defensivas", "2P%")] = pcts["Opp 2P%"]
-    dados[("Defensivas", "3PC")] = calc(agg["3PM_A"])
-    dados[("Defensivas", "3PT")] = calc(agg["3PA_A"])
-    dados[("Defensivas", "3P%")] = pcts["Opp 3P%"]
-    dados[("Defensivas", "LLC")] = calc(agg["FTM_A"])
-    dados[("Defensivas", "LLT")] = calc(agg["FTA_A"])
-    dados[("Defensivas", "LL%")] = pcts["Opp LL%"]
-    dados[("Defensivas", "RO")] = calc(agg["OR_A"])
-    dados[("Defensivas", "RD")] = calc(agg["DR_A"])
-    dados[("Defensivas", "REB")] = calc(agg["REB_A"])
-    dados[("Defensivas", "AST")] = calc(agg["AST_A"])
-    dados[("Defensivas", "TOV")] = calc(agg["TO_A"])
-    dados[("Defensivas", "STL")] = calc(agg["STL_A"])
-    dados[("Defensivas", "BLK")] = calc(agg["BLK_A"])
-    dados[("Defensivas", "F")] = calc(agg["PF_A"])
-    dados[("Defensivas", "EF")] = calc(ef_a)
+    # Bloco Defensivas (Vermelho)
+    cols_def = {
+        "Opp PTS": calc(agg["PTS_A"]),
+        "Opp FGM": calc(fgm_a),
+        "Opp FGA": calc(fga_a),
+        "Opp FG%": pcts["Opp FG%"],
+        "Opp 2PC": calc(agg["2PM_A"]),
+        "Opp 2PT": calc(agg["2PA_A"]),
+        "Opp 2P%": pcts["Opp 2P%"],
+        "Opp 3PC": calc(agg["3PM_A"]),
+        "Opp 3PT": calc(agg["3PA_A"]),
+        "Opp 3P%": pcts["Opp 3P%"],
+        "Opp LLC": calc(agg["FTM_A"]),
+        "Opp LLT": calc(agg["FTA_A"]),
+        "Opp LL%": pcts["Opp LL%"],
+        "Opp RO": calc(agg["OR_A"]),
+        "Opp RD": calc(agg["DR_A"]),
+        "Opp REB": calc(agg["REB_A"]),
+        "Opp AST": calc(agg["AST_A"]),
+        "Opp TOV": calc(agg["TO_A"]),
+        "Opp STL": calc(agg["STL_A"]),
+        "Opp BLK": calc(agg["BLK_A"]),
+        "Opp F": calc(agg["PF_A"]),
+        "Opp EF": calc(ef_a),
+    }
+    dados.update(cols_def)
 
-    df_out = pd.DataFrame(dados)
-    df_out.columns = pd.MultiIndex.from_tuples(df_out.columns)
-    return df_out
+    return pd.DataFrame(dados), list(cols_off.keys()), list(cols_def.keys())
 
 
 # --- MONTAGEM DA TABELA CONFORME O MODO ---
@@ -351,7 +355,7 @@ if modo_exibicao == "Total":
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
         "JO": agg["JO"],
     }
-    tabela = montar_box_score_agrupado(head, 1, 1, 0)
+    tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, 1, 1, 0)
     fmt_decimais = 0
 
 elif modo_exibicao == "Média":
@@ -361,7 +365,7 @@ elif modo_exibicao == "Média":
         "Minutos": (agg["DUR_S"] / jo_div).apply(sec_to_dur),
         "JO": agg["JO"],
     }
-    tabela = montar_box_score_agrupado(head, jo_div, 1, 1)
+    tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, jo_div, 1, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 40 Minutos":
@@ -371,7 +375,7 @@ elif modo_exibicao == "Por 40 Minutos":
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
         "JO": agg["JO"],
     }
-    tabela = montar_box_score_agrupado(head, min_div, 40, 1)
+    tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, min_div, 40, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 100 Posses":
@@ -381,7 +385,7 @@ elif modo_exibicao == "Por 100 Posses":
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
         "JO": agg["JO"],
     }
-    tabela = montar_box_score_agrupado(head, pos_div, 100, 1)
+    tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, pos_div, 100, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Avançadas":
@@ -407,31 +411,50 @@ elif modo_exibicao == "Avançadas":
     pace = np.where(min_float > 0, ((agg["POSSES"] / min_float) * 40).round(1), 0.0)
 
     dados_adv = {
-        ("", "Time"): agg["Time"],
-        ("", "Minutos"): agg["DUR_S"].apply(sec_to_dur),
-        ("", "JO"): agg["JO"],
-        ("", "PACE"): pace,
-        ("Ofensivas", "eFG%"): efg_off,
-        ("Ofensivas", "TOV%"): tov_off,
-        ("Ofensivas", "ORB%"): orb_off,
-        ("Ofensivas", "FTA Rate"): fta_rate_off,
-        ("Ofensivas", "OFFRTG"): off_rtg,
-        ("Defensivas", "eFG%"): efg_def,
-        ("Defensivas", "TOV%"): tov_def,
-        ("Defensivas", "ORB%"): orb_def,
-        ("Defensivas", "FTA Rate"): fta_rate_def,
-        ("Defensivas", "DEFRTG"): def_rtg,
-        ("", "NETRTG"): (off_rtg - def_rtg).round(1),
+        "Time": agg["Time"],
+        "Minutos": agg["DUR_S"].apply(sec_to_dur),
+        "JO": agg["JO"],
+        "PACE": pace,
+        "eFG%": efg_off,
+        "TOV%": tov_off,
+        "ORB%": orb_off,
+        "FTA Rate": fta_rate_off,
+        "OFFRTG": off_rtg,
+        "Opp eFG%": efg_def,
+        "Opp TOV%": tov_def,
+        "Opp ORB%": orb_def,
+        "Opp FTA Rate": fta_rate_def,
+        "DEFRTG": def_rtg,
+        "NETRTG": (off_rtg - def_rtg).round(1),
     }
     tabela = pd.DataFrame(dados_adv)
-    tabela.columns = pd.MultiIndex.from_tuples(tabela.columns)
+    cols_verdes = ["eFG%", "TOV%", "ORB%", "FTA Rate", "OFFRTG"]
+    cols_vermelhas = ["Opp eFG%", "Opp TOV%", "Opp ORB%", "Opp FTA Rate", "DEFRTG"]
     fmt_decimais = 1
 
 # --- CONGELA A COLUNA LINEUP COMO ÍNDICE SIMPLES ---
 tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
 
 
-# --- FORMATAÇÃO VISUAL PRESERVANDO OS VALORES NUMÉRICOS PARA ORDENAÇÃO ---
+# --- LEGENDA DE CORES ACIMA DA TABELA ---
+st.markdown(
+    """
+    <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 8px; font-size: 13px;">
+        <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="width: 14px; height: 14px; background-color: rgba(46, 204, 113, 0.28); border: 1px solid rgba(46, 204, 113, 0.6); border-radius: 3px; display: inline-block;"></span>
+            <strong>Ofensivas</strong>
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <span style="width: 14px; height: 14px; background-color: rgba(231, 76, 60, 0.28); border: 1px solid rgba(231, 76, 60, 0.6); border-radius: 3px; display: inline-block;"></span>
+            <strong>Defensivas</strong>
+        </span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# --- FORMATAÇÃO VISUAL E CORES POR BLOCO ---
 def fmt_plus_minus(val):
     if pd.isna(val):
         return ""
@@ -447,21 +470,25 @@ def fmt_plus_minus(val):
 
 formatos = {}
 for col in tabela.columns:
-    sub_nome = col[1]
-    if sub_nome == "+/-":
+    if col == "+/-":
         formatos[col] = fmt_plus_minus
-    elif sub_nome == "JO":
+    elif col == "JO":
         formatos[col] = "{:.0f}"
-    elif sub_nome == "FTA Rate":
+    elif "FTA Rate" in col:
         formatos[col] = "{:.3f}"
-    elif "%" in sub_nome:
+    elif "%" in col:
         formatos[col] = "{:.1f}%"
-    elif sub_nome in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
+    elif col in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
         formatos[col] = "{:.1f}"
-    elif sub_nome not in ["Time", "Minutos"]:
+    elif col not in ["Time", "Minutos"]:
         formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
 
-tabela_estilizada = tabela.style.format(formatos)
+tabela_estilizada = (
+    tabela.style
+    .format(formatos)
+    .set_properties(subset=cols_verdes, **{"background-color": "rgba(46, 204, 113, 0.16)"})
+    .set_properties(subset=cols_vermelhas, **{"background-color": "rgba(231, 76, 60, 0.16)"})
+)
 
 st.dataframe(tabela_estilizada, use_container_width=True)
 
