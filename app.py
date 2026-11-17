@@ -129,7 +129,14 @@ def load_data():
 
 df = load_data()
 
-st.title("LNB Lineups")
+st.markdown(
+    """
+    <h1 style="text-align: center; font-size: 28px; font-weight: 700; margin-top: 0px; margin-bottom: 12px;">
+        NBB CAIXA 2026/2027
+    </h1>
+    """,
+    unsafe_allow_html=True,
+)
 
 # --- BARRA LATERAL (FILTROS) ---
 st.sidebar.header("Filtros")
