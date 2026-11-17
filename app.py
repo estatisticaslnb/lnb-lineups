@@ -66,10 +66,14 @@ st.title("LNB Lineups")
 # --- BARRA LATERAL (FILTROS) ---
 st.sidebar.header("Filtros")
 
-times = sorted(df["Time"].dropna().unique())
-time_sel = st.sidebar.selectbox("Equipe", times)
+todos_times = sorted(df["Time"].dropna().unique())
+times_sel = st.sidebar.multiselect(
+    "Equipe(s) (vazio = Todos os Times)",
+    todos_times,
+    default=[]
+)
 
-df_time = df[df["Time"] == time_sel].copy()
+df_time = df[df["Time"].isin(times_sel)].copy() if times_sel else df.copy()
 
 opcoes_tamanho = {
     "5 - Quintetos": 5,
@@ -100,7 +104,7 @@ quartos_sel = st.sidebar.multiselect("Períodos", quartos, default=quartos)
 
 modo_exibicao = st.sidebar.radio(
     "Modo de Exibição",
-    ["Total", "Média", "Por 100 Posses", "Advanced"],
+    ["Total", "Média", "Por 40 Minutos", "Por 100 Posses", "Advanced"],
 )
 
 col_f1, col_f2 = st.sidebar.columns(2)
@@ -149,7 +153,7 @@ if df_exp.empty:
     st.warning("Nenhuma combinação encontrada para os filtros selecionados.")
     st.stop()
 
-# --- AGREGAÇÃO POR LINEUP ---
+# --- AGREGAÇÃO POR TIME E LINEUP ---
 cols_soma = [
     "DUR_S", "PTS", "2PM", "2PA", "3PM", "3PA", "FTM", "FTA",
     "OR", "DR", "REB", "AST", "TO", "STL", "BLK", "PF",
@@ -157,7 +161,7 @@ cols_soma = [
     "OR_A", "DR_A", "REB_A", "AST_A", "TO_A", "STL_A", "BLK_A", "PF_A", "+/-",
 ]
 
-agg = df_exp.groupby("Lineup", as_index=False).agg(
+agg = df_exp.groupby(["Time", "Lineup"], as_index=False).agg(
     J=("ID", "nunique"),
     **{c: (c, "sum") for c in cols_soma},
 )
@@ -274,6 +278,7 @@ def montar_box_score_agrupado(head_dict, fator_div, fator_mult, casas_decimais):
 # --- MONTAGEM DA TABELA CONFORME O MODO ---
 if modo_exibicao == "Total":
     head = {
+        "Time": agg["Time"],
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
         "J": agg["J"],
     }
@@ -283,15 +288,27 @@ if modo_exibicao == "Total":
 elif modo_exibicao == "Média":
     j_div = agg["J"].replace(0, 1)
     head = {
+        "Time": agg["Time"],
         "Minutos": (agg["DUR_S"] / j_div).apply(sec_to_dur),
         "J": agg["J"],
     }
     tabela = montar_box_score_agrupado(head, j_div, 1, 1)
     fmt_decimais = 1
 
+elif modo_exibicao == "Por 40 Minutos":
+    min_div = (agg["DUR_S"] / 60.0).replace(0, 1)
+    head = {
+        "Time": agg["Time"],
+        "Minutos": agg["DUR_S"].apply(sec_to_dur),
+        "J": agg["J"],
+    }
+    tabela = montar_box_score_agrupado(head, min_div, 40, 1)
+    fmt_decimais = 1
+
 elif modo_exibicao == "Por 100 Posses":
     pos_div = agg["POSSES"].replace(0, 1)
     head = {
+        "Time": agg["Time"],
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
         "Posses ~": agg["POSSES"],
     }
@@ -321,6 +338,7 @@ elif modo_exibicao == "Advanced":
     pace = np.where(min_float > 0, ((agg["POSSES"] / min_float) * 40).round(1), 0.0)
 
     dados_adv = {
+        ("", "Time"): agg["Time"],
         ("", "Minutos"): agg["DUR_S"].apply(sec_to_dur),
         ("", "Posses ~"): agg["POSSES"],
         ("", "PACE"): pace,
@@ -359,6 +377,10 @@ def fmt_plus_minus(val):
 
 
 formatos = {}
+col_config = {
+    "_index": st.column_config.TextColumn("Lineup", alignment="left")
+}
+
 for col in tabela.columns:
     sub_nome = col[1]
     if sub_nome == "+/-":
@@ -367,8 +389,10 @@ for col in tabela.columns:
         formatos[col] = "{:.0f}"
     elif "%" in sub_nome or sub_nome in ["PACE", "FTA Rate", "OFFRTG", "DEFRTG", "NETRTG"]:
         formatos[col] = "{:.1f}"
-    elif sub_nome != "Minutos":
+    elif sub_nome not in ["Time", "Minutos"]:
         formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
+
+    col_config[col] = st.column_config.Column(alignment="center")
 
 tabela_estilizada = (
     tabela.style
@@ -381,4 +405,4 @@ tabela_estilizada = (
     ])
 )
 
-st.dataframe(tabela_estilizada, use_container_width=True)
+st.dataframe(tabela_estilizada, column_config=col_config, use_container_width=True)
