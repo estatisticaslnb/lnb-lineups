@@ -63,7 +63,7 @@ MAPA_TIMES = {
     "UCO": "UNICO",
     "CRU": "CRUZEIRO",
     "SJO": "SAO JOSE",
-    "PAU": "PAULISTANO",
+    "CAP": "PAULISTANO",
     "BOT": "BOTAFOGO",
     "OSA": "OSASCO",
     "PAT": "PATO",
