@@ -454,7 +454,7 @@ st.markdown(
 )
 
 
-# --- FORMATAÇÃO VISUAL E CORES POR BLOCO ---
+# --- FORMATAÇÃO VISUAL, CENTRALIZAÇÃO E CORES POR BLOCO ---
 def fmt_plus_minus(val):
     if pd.isna(val):
         return ""
@@ -469,19 +469,31 @@ def fmt_plus_minus(val):
 
 
 formatos = {}
+col_config = {
+    "_index": st.column_config.TextColumn("Lineup", alignment="left")
+}
+
 for col in tabela.columns:
     if col == "+/-":
         formatos[col] = fmt_plus_minus
+        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
     elif col == "JO":
         formatos[col] = "{:.0f}"
+        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
     elif "FTA Rate" in col:
         formatos[col] = "{:.3f}"
+        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
     elif "%" in col:
         formatos[col] = "{:.1f}%"
+        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
     elif col in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
         formatos[col] = "{:.1f}"
-    elif col not in ["Time", "Minutos"]:
+        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
+    elif col in ["Time", "Minutos"]:
+        col_config[col] = st.column_config.TextColumn(col, alignment="center")
+    else:
         formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
+        col_config[col] = st.column_config.NumberColumn(col, alignment="center")
 
 tabela_estilizada = (
     tabela.style
@@ -490,7 +502,7 @@ tabela_estilizada = (
     .set_properties(subset=cols_vermelhas, **{"background-color": "rgba(231, 76, 60, 0.16)"})
 )
 
-st.dataframe(tabela_estilizada, use_container_width=True)
+st.dataframe(tabela_estilizada, column_config=col_config, use_container_width=True)
 
 # --- RODAPÉ COM IMAGEM ---
 exibir_banner("footerNBB", tipo="footer")
