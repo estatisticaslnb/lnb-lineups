@@ -1,5 +1,6 @@
 import os
 import re
+import base64
 import datetime
 from itertools import combinations
 import streamlit as st
@@ -9,19 +10,44 @@ import numpy as np
 st.set_page_config(page_title="LNB Lineups", layout="wide")
 
 
-def encontrar_imagem(prefixo):
+def exibir_banner(prefixo, tipo="header"):
     arquivos = os.listdir(".")
-    for f in arquivos:
-        nome_lower = f.lower()
-        if nome_lower.startswith(prefixo.lower()) and nome_lower.endswith((".png", ".jpg", ".jpeg", ".webp")):
-            return f
-    return None
+    img_path = next(
+        (
+            f for f in arquivos
+            if f.lower().startswith(prefixo.lower())
+            and f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+        ),
+        None,
+    )
+    if not img_path:
+        return
+
+    ext = os.path.splitext(img_path)[1].lower().replace(".", "")
+    if ext == "jpg":
+        ext = "jpeg"
+
+    with open(img_path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    borda = (
+        "border-bottom: 1px solid #e2e8f0; margin-bottom: 16px;"
+        if tipo == "header"
+        else "border-top: 1px solid #e2e8f0; margin-top: 24px;"
+    )
+
+    st.markdown(
+        f"""
+        <div style="background-color: #ffffff; padding: 10px 16px; text-align: center; {borda}">
+            <img src="data:image/{ext};base64,{b64}" style="max-height: 80px; max-width: 100%; height: auto; display: block; margin: 0 auto;" />
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-# --- IMAGEM DE CABEÇALHO / LOGO ---
-img_cabecalho = encontrar_imagem("headerNBB")
-if img_cabecalho:
-    st.image(img_cabecalho, use_container_width=True)
+# --- CABEÇALHO COM IMAGEM ---
+exibir_banner("headerNBB", tipo="header")
 
 
 MAPA_TIMES = {
@@ -446,8 +472,5 @@ tabela_estilizada = tabela.style.format(formatos)
 
 st.dataframe(tabela_estilizada, use_container_width=True)
 
-# --- IMAGEM DE RODAPÉ ---
-img_rodape = encontrar_imagem("footerNBB")
-if img_rodape:
-    st.markdown("---")
-    st.image(img_rodape, use_container_width=True)
+# --- RODAPÉ COM IMAGEM ---
+exibir_banner("footerNBB", tipo="footer")
