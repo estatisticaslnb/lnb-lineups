@@ -381,7 +381,7 @@ col_config = {
     "_index": st.column_config.TextColumn("Lineup", alignment="left")
 }
 
-for col in tabela.columns:
+for idx, col in enumerate(tabela.columns, start=1):
     sub_nome = col[1]
     if sub_nome == "+/-":
         formatos[col] = fmt_plus_minus
@@ -392,7 +392,8 @@ for col in tabela.columns:
     elif sub_nome not in ["Time", "Minutos"]:
         formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
 
-    col_config[col] = st.column_config.Column(alignment="center")
+    # No MultiIndex, o Streamlit usa a posição numérica em string ("1", "2", ...) no column_config
+    col_config[str(idx)] = st.column_config.Column(alignment="center")
 
 tabela_estilizada = (
     tabela.style
