@@ -131,7 +131,7 @@ df = load_data()
 
 st.markdown(
     """
-    <h1 style="text-align: center; font-size: 28px; font-weight: 700; margin-top: 0px; margin-bottom: 12px;">
+    <h1 style="text-align: left; font-size: 28px; font-weight: 700; margin-top: 0px; margin-bottom: 12px;">
         NBB CAIXA 2026/2027
     </h1>
     """,
@@ -509,7 +509,7 @@ tabela_estilizada = (
     .set_properties(subset=cols_vermelhas, **{"background-color": "rgba(231, 76, 60, 0.16)"})
 )
 
-altura_tabela = min(max(len(tabela) * 35 + 42, 180), 560)
+altura_tabela = min(max(len(tabela) * 35 + 42, 180), 497)
 st.dataframe(tabela_estilizada, column_config=col_config, height=altura_tabela, use_container_width=True)
 
 # --- RODAPÉ COM IMAGEM ---
