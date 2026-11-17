@@ -117,32 +117,35 @@ agg["DRB%"] = np.where((agg["DR"] + agg["OR_A"]) > 0, (agg["DR"] / (agg["DR"] + 
 
 # --- MONTAGEM DA TABELA FINAL ---
 if modo_exibicao == "Totais":
-    tabela = agg[[
+    agg_sorted = agg.sort_values(by="DUR_S", ascending=False)
+    tabela = agg_sorted[[
         "Kinteto", "MIN", "POSSES", "+/-", "ORtg", "DRtg", "NetRtg",
         "PTS", "PTS_A", "FG%", "3P%", "eFG%", "REB", "REB_A", "ORB%", "DRB%",
         "AST", "TO", "STL", "BLK", "PF"
-    ]].sort_values(by="DUR_S", ascending=False)
+    ]]
 else:
+    agg_sorted = agg.sort_values(by="POSSES", ascending=False)
+    pos_div_s = agg_sorted["POSSES"].replace(0, 1)
     tabela = pd.DataFrame({
-        "Kinteto": agg["Kinteto"],
-        "MIN": agg["MIN"],
-        "POSSES": agg["POSSES"],
-        "ORtg": agg["ORtg"],
-        "DRtg": agg["DRtg"],
-        "NetRtg": agg["NetRtg"],
-        "PTS/100": agg["ORtg"],
-        "PTS_A/100": agg["DRtg"],
-        "FG%": agg["FG%"],
-        "3P%": agg["3P%"],
-        "eFG%": agg["eFG%"],
-        "REB/100": ((agg["REB"] / pos_div) * 100).round(1),
-        "REB_A/100": ((agg["REB_A"] / pos_div) * 100).round(1),
-        "ORB%": agg["ORB%"],
-        "DRB%": agg["DRB%"],
-        "AST/100": ((agg["AST"] / pos_div) * 100).round(1),
-        "TO/100": ((agg["TO"] / pos_div) * 100).round(1),
-        "STL/100": ((agg["STL"] / pos_div) * 100).round(1),
-        "BLK/100": ((agg["BLK"] / pos_div) * 100).round(1),
-    }).loc[agg.sort_values(by="POSSES", ascending=False).index]
+        "Kinteto": agg_sorted["Kinteto"],
+        "MIN": agg_sorted["MIN"],
+        "POSSES": agg_sorted["POSSES"],
+        "ORtg": agg_sorted["ORtg"],
+        "DRtg": agg_sorted["DRtg"],
+        "NetRtg": agg_sorted["NetRtg"],
+        "PTS/100": agg_sorted["ORtg"],
+        "PTS_A/100": agg_sorted["DRtg"],
+        "FG%": agg_sorted["FG%"],
+        "3P%": agg_sorted["3P%"],
+        "eFG%": agg_sorted["eFG%"],
+        "REB/100": ((agg_sorted["REB"] / pos_div_s) * 100).round(1),
+        "REB_A/100": ((agg_sorted["REB_A"] / pos_div_s) * 100).round(1),
+        "ORB%": agg_sorted["ORB%"],
+        "DRB%": agg_sorted["DRB%"],
+        "AST/100": ((agg_sorted["AST"] / pos_div_s) * 100).round(1),
+        "TO/100": ((agg_sorted["TO"] / pos_div_s) * 100).round(1),
+        "STL/100": ((agg_sorted["STL"] / pos_div_s) * 100).round(1),
+        "BLK/100": ((agg_sorted["BLK"] / pos_div_s) * 100).round(1),
+    })
 
 st.dataframe(tabela, use_container_width=True, hide_index=True)
