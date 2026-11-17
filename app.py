@@ -1,3 +1,4 @@
+import os
 import datetime
 import streamlit as st
 import pandas as pd
@@ -9,7 +10,6 @@ def dur_to_sec(val):
     if pd.isna(val):
         return 0
     if isinstance(val, datetime.time):
-        # Caso o Excel interprete MM:SS como HH:MM (ex: 05:28 -> 5h 28m)
         if val.hour > 0 and val.second == 0:
             return val.hour * 60 + val.minute
         return val.hour * 3600 + val.minute * 60 + val.second
@@ -29,7 +29,18 @@ def sec_to_dur(sec):
 
 @st.cache_data
 def load_data():
-    df = pd.read_excel("NBB19 LineuPs.xlsx")
+    arquivos = os.listdir(".")
+    planilha = next((f for f in arquivos if f.lower().endswith((".xlsx", ".xls", ".csv"))), None)
+    
+    if not planilha:
+        st.error(f"Nenhuma planilha encontrada no repositório. Arquivos atuais: {arquivos}")
+        st.stop()
+        
+    if planilha.lower().endswith(".csv"):
+        df = pd.read_csv(planilha)
+    else:
+        df = pd.read_excel(planilha)
+        
     df["DUR_S"] = df["D"].apply(dur_to_sec)
     return df
 
