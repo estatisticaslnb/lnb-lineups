@@ -319,20 +319,22 @@ elif modo_exibicao == "Avançadas":
     pos_div = agg["POSSES"].replace(0, 1)
     min_float = agg["DUR_S"] / 60.0
 
+    # Four Factors Ofensivos (TOV% com denominador arredondado: ARRED(FGA + 4/9*FTA + TOV; 0))
     efg_off = np.where(fga > 0, ((fgm + 0.5 * agg["3PM"]) / fga * 100).round(1), 0.0)
-    tov_denom_off = fga + (4 / 9) * agg["FTA"] + agg["TO"]
+    tov_denom_off = (fga + (4 / 9) * agg["FTA"] + agg["TO"]).round(0)
     tov_off = np.where(tov_denom_off > 0, (agg["TO"] / tov_denom_off * 100).round(1), 0.0)
     orb_denom_off = agg["OR"] + agg["DR_A"]
     orb_off = np.where(orb_denom_off > 0, (agg["OR"] / orb_denom_off * 100).round(1), 0.0)
-    fta_rate_off = np.where(fga > 0, (agg["FTA"] / fga * 100).round(1), 0.0)
+    fta_rate_off = np.where(fga > 0, (agg["FTA"] / fga).round(3), 0.0)
     off_rtg = ((agg["PTS"] / pos_div) * 100).round(1)
 
+    # Four Factors Defensivos (TOV% com denominador arredondado: ARRED(Opp_FGA + 4/9*Opp_FTA + Opp_TOV; 0))
     efg_def = np.where(fga_a > 0, ((fgm_a + 0.5 * agg["3PM_A"]) / fga_a * 100).round(1), 0.0)
-    tov_denom_def = fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]
+    tov_denom_def = (fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]).round(0)
     tov_def = np.where(tov_denom_def > 0, (agg["TO_A"] / tov_denom_def * 100).round(1), 0.0)
     orb_denom_def = agg["OR_A"] + agg["DR"]
     orb_def = np.where(orb_denom_def > 0, (agg["OR_A"] / orb_denom_def * 100).round(1), 0.0)
-    fta_rate_def = np.where(fga_a > 0, (agg["FTA_A"] / fga_a * 100).round(1), 0.0)
+    fta_rate_def = np.where(fga_a > 0, (agg["FTA_A"] / fga_a).round(3), 0.0)
     def_rtg = ((agg["PTS_A"] / pos_div) * 100).round(1)
 
     pace = np.where(min_float > 0, ((agg["POSSES"] / min_float) * 40).round(1), 0.0)
@@ -387,7 +389,9 @@ for idx, col in enumerate(tabela_fmt.columns, start=1):
         tabela_fmt[col] = tabela_fmt[col].apply(fmt_plus_minus)
     elif sub_nome == "JO":
         tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{int(round(x))}")
-    elif "%" in sub_nome or sub_nome in ["PACE", "FTA Rate", "OFFRTG", "DEFRTG", "NETRTG"]:
+    elif sub_nome == "FTA Rate":
+        tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{float(x):.3f}")
+    elif "%" in sub_nome or sub_nome in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
         tabela_fmt[col] = tabela_fmt[col].apply(lambda x: f"{float(x):.1f}")
     elif sub_nome not in ["Time", "Minutos"]:
         if fmt_decimais == 0:
