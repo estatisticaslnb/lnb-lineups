@@ -482,7 +482,7 @@ col_config = {
 
 for col in tabela.columns:
     titulo_visivel = col.strip()
-    if titulo_visivel == "+/-":
+    if titulo_visivel in ["+/-", "NETRTG"]:
         formatos[col] = fmt_plus_minus
         col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
     elif titulo_visivel == "JO":
@@ -494,7 +494,7 @@ for col in tabela.columns:
     elif "%" in titulo_visivel:
         formatos[col] = "{:.1f}%"
         col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
-    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG", "NETRTG"]:
+    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
         formatos[col] = "{:.1f}"
         col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
     elif titulo_visivel in ["Time", "Minutos"]:
