@@ -277,7 +277,7 @@ jogos = sorted(df_time["ID"].dropna().unique(), key=chave_ordenacao_mista)
 jogos_sel = st.sidebar.multiselect("Jogos (vazio = Todos)", jogos, default=[])
 
 quartos = sorted(df_time["P"].dropna().unique(), key=chave_ordenacao_mista)
-quartos_sel = st.sidebar.multiselect("Períodos", quartos, default=quartos)
+quartos_sel = st.sidebar.multiselect("Períodos (vazio = Todos)", quartos, default=[])
 
 col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
@@ -285,7 +285,8 @@ min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=1)
 
 # --- FILTRAGEM INICIAL (INCLUINDO ATLETAS ANTES DE EXPLODIR COMBINAÇÕES) ---
 jogos_ativos = jogos_sel if jogos_sel else jogos
-mask_base = (df_time["ID"].isin(jogos_ativos)) & (df_time["P"].isin(quartos_sel))
+quartos_ativos = quartos_sel if quartos_sel else quartos
+mask_base = (df_time["ID"].isin(jogos_ativos)) & (df_time["P"].isin(quartos_ativos))
 
 if atletas_sel:
     atletas_set = set(atletas_sel)
