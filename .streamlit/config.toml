@@ -1,3 +1,4 @@
 [theme]
-font = "monospace"
+font = "Consolas, monospace"
+codeFont = "Consolas, monospace"
 baseFontSize = 13
