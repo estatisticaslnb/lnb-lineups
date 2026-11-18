@@ -14,7 +14,18 @@ st.markdown(
     """
     <style>
         html, body, [class*="css"] {
-            font-family: "JetBrains Mono", "Roboto Mono", "Consolas", monospace;
+            font-family: "Consolas", "Courier New", monospace !important;
+        }
+        .block-container {
+            padding-top: 1.2rem !important;
+            padding-bottom: 1.5rem !important;
+        }
+        [data-testid="stSidebarUserContent"] {
+            padding-top: 1.2rem !important;
+        }
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+            height: 2.2rem !important;
         }
     </style>
     """,
@@ -44,13 +55,13 @@ def carregar_banner_html(prefixo, tipo="header"):
         b64 = base64.b64encode(f.read()).decode("utf-8")
 
     borda = (
-        "border-bottom: 1px solid #e2e8f0; margin-bottom: 16px;"
+        "border-bottom: 1px solid #e2e8f0; margin-bottom: 12px;"
         if tipo == "header"
-        else "border-top: 1px solid #e2e8f0; margin-top: 24px;"
+        else "border-top: 1px solid #e2e8f0; margin-top: 20px;"
     )
 
     return f"""
-        <div style="background-color: #ffffff; padding: 10px 16px; text-align: center; {borda}">
+        <div style="background-color: #ffffff; padding: 8px 16px; text-align: center; {borda}">
             <img src="data:image/{ext};base64,{b64}" style="max-height: 80px; max-width: 100%; height: auto; display: block; margin: 0 auto;" />
         </div>
     """
@@ -190,7 +201,7 @@ df = load_data(planilha, os.path.getmtime(planilha))
 
 st.markdown(
     """
-    <h1 style="text-align: left; font-size: 28px; font-weight: 700; margin-top: 0px; margin-bottom: 12px;">
+    <h1 style="text-align: left; font-size: 28px; font-weight: 700; margin-top: 0px; margin-bottom: 10px; font-family: 'Consolas', 'Courier New', monospace;">
         NBB CAIXA 2026/2027
     </h1>
     """,
@@ -312,7 +323,7 @@ if agg.empty:
 agg = agg.sort_values(by="DUR_S", ascending=False).reset_index(drop=True)
 
 total_linhas = len(agg)
-limite_padrao = 300
+limite_padrao = 250
 if total_linhas > limite_padrao:
     mostrar_tudo = st.sidebar.checkbox(
         f"Exibir todas as {total_linhas} linhas (pode deixar o navegador mais lento)",
