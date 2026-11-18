@@ -35,6 +35,10 @@ MAPA_TIMES = {
     "UFC": "UNIFACISA",
 }
 
+PADRAO_SIGLAS_TIMES = re.compile(
+    r"\b(" + "|".join(re.escape(k) for k in MAPA_TIMES.keys()) + r")\b"
+)
+
 OPCOES_TAMANHO = {
     "5 - Quintetos": 5,
     "4 - Quartetos": 4,
@@ -140,6 +144,22 @@ def nome_completo_time(sigla):
     return MAPA_TIMES.get(str(sigla).strip().upper(), str(sigla).strip())
 
 
+def identificar_mando(id_jogo, time_sigla):
+    texto_id = str(id_jogo).upper()
+    time_atual = str(time_sigla).strip().upper()
+
+    encontrados = PADRAO_SIGLAS_TIMES.findall(texto_id)
+    if len(encontrados) < 2:
+        encontrados = re.findall(r"\b[A-Z]{3}\b", texto_id)
+
+    if len(encontrados) >= 2:
+        if time_atual == encontrados[0]:
+            return "Mandante"
+        if time_atual == encontrados[1]:
+            return "Visitante"
+    return "Indefinido"
+
+
 def dur_to_sec(val):
     if pd.isna(val):
         return 0
@@ -228,15 +248,20 @@ def load_data(planilha, mtime):
     df["ID"] = df["ID"].apply(limpar_valor_str)
     df["P"] = df["P"].apply(limpar_valor_str)
     df["JOGADORES_TUPLE"] = df["Kinteto"].apply(normalizar_kinteto_tuple)
+    df["MANDO"] = [identificar_mando(i, t) for i, t in zip(df["ID"], df["Time"])]
     return df
 
 
 @st.cache_data
-def agregar_lineups(planilha, mtime, times_sel, tamanho_comb, atletas_sel, jogos_sel, quartos_sel):
+def agregar_lineups(
+    planilha, mtime, times_sel, tamanho_comb, atletas_sel, jogos_sel, quartos_sel, mando_sel
+):
     df = load_data(planilha, mtime)
     df_sub = df[df["Time"].isin(times_sel)] if times_sel else df
 
     mask = pd.Series(True, index=df_sub.index)
+    if mando_sel != "Todos":
+        mask &= df_sub["MANDO"] == mando_sel
     if jogos_sel:
         mask &= df_sub["ID"].isin(jogos_sel)
     if quartos_sel:
@@ -461,10 +486,14 @@ tamanho_comb = OPCOES_TAMANHO[tamanho_label]
 todos_atletas = sorted({p for tup in df_opcoes["JOGADORES_TUPLE"] for p in tup}, key=chave_num_atleta)
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
-jogos = sorted(df_opcoes["ID"].dropna().unique(), key=chave_ordenacao_mista)
+mando_sel = st.sidebar.selectbox("Mando de Quadra", ["Todos", "Mandante", "Visitante"])
+
+df_opcoes_mando = df_opcoes[df_opcoes["MANDO"] == mando_sel] if mando_sel != "Todos" else df_opcoes
+
+jogos = sorted(df_opcoes_mando["ID"].dropna().unique(), key=chave_ordenacao_mista)
 jogos_sel = st.sidebar.multiselect("Jogos (vazio = todos)", jogos, default=[])
 
-quartos = sorted(df_opcoes["P"].dropna().unique(), key=chave_ordenacao_mista)
+quartos = sorted(df_opcoes_mando["P"].dropna().unique(), key=chave_ordenacao_mista)
 quartos_sel = st.sidebar.multiselect("Períodos (vazio = todos)", quartos, default=[])
 
 col_f1, col_f2 = st.sidebar.columns(2)
@@ -480,6 +509,7 @@ agg = agregar_lineups(
     tuple(atletas_sel),
     tuple(jogos_sel),
     tuple(quartos_sel),
+    mando_sel,
 )
 
 if agg.empty:
@@ -703,7 +733,7 @@ custom_css = {
 }
 
 altura_tabela = min(max(len(tabela) * 29 + 37, 180), 520)
-grid_key = f"grid_{modo_exibicao}_{tamanho_comb}_{len(agg)}_{agg['DUR_S'].sum()}"
+grid_key = f"grid_{modo_exibicao}_{tamanho_comb}_{mando_sel}_{len(agg)}_{agg['DUR_S'].sum()}"
 
 AgGrid(
     tabela,
