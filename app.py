@@ -465,25 +465,25 @@ base_head = {
 }
 
 if modo_exibicao == "Total":
-    head = {**base_head, "Minutos": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
+    head = {**base_head, "Min.": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, 1, 1, 0)
     fmt_decimais = 0
 
 elif modo_exibicao == "Média":
     jo_div = agg["JO"].replace(0, 1)
-    head = {**base_head, "Minutos": (agg["DUR_S"] / jo_div).round(0).astype(int), "JO": agg["JO"]}
+    head = {**base_head, "Min.": (agg["DUR_S"] / jo_div).round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, jo_div, 1, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 40 Minutos":
     min_div = (agg["DUR_S"] / 60.0).replace(0, 1)
-    head = {**base_head, "Minutos": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
+    head = {**base_head, "Min.": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, min_div, 40, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 100 Posses":
     pos_div = agg["POSSES"].replace(0, 1)
-    head = {**base_head, "Minutos": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
+    head = {**base_head, "Min.": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, pos_div, 100, 1)
     fmt_decimais = 1
 
@@ -511,7 +511,7 @@ elif modo_exibicao == "Avançadas":
 
     dados_adv = {
         **base_head,
-        "Minutos": agg["DUR_S"].round(0).astype(int),
+        "Min.": agg["DUR_S"].round(0).astype(int),
         "JO": agg["JO"],
         "PACE": pace,
         "eFG%": efg_off,
@@ -557,7 +557,7 @@ st.markdown(
 )
 
 
-# --- CONFIGURAÇÃO DO AG-GRID (TEMA ALPINE MODERNO E RANKING # DINÂMICO GARANTIDO) ---
+# --- CONFIGURAÇÃO DO AG-GRID (TODOS OS CABEÇALHOS CENTRALIZADOS E LINEUP À ESQUERDA NO CORPO) ---
 gb = GridOptionsBuilder.from_dataframe(tabela)
 gb.configure_default_column(
     sortable=True,
@@ -569,12 +569,12 @@ gb.configure_default_column(
     cellStyle={"textAlign": "center", "borderRight": "1px solid #94a3b8"},
 )
 
-# 1. Coluna Lineup congelada e medida pelo maior texto real da seleção
+# 1. Coluna Lineup congelada (cabeçalho centralizado via CSS global; células alinhadas à esquerda)
 max_px_lineup = float(agg["Lineup"].apply(medir_largura_texto_px).max()) if not agg.empty else 110.0
 largura_lineup = max(int(np.ceil(max_px_lineup)) + 16, 95)
 gb.configure_column(
     "Lineup",
-    headerName="Lineup",
+    headerName="LINEUP",
     pinned="left",
     width=largura_lineup,
     minWidth=largura_lineup,
@@ -656,10 +656,10 @@ for col in tabela.columns:
         kwargs_col["valueFormatter"] = fmt_dec1
         kwargs_col["width"] = 52
         kwargs_col["minWidth"] = 52
-    elif titulo_visivel == "Minutos":
+    elif titulo_visivel == "Min.":
         kwargs_col["valueFormatter"] = fmt_dur
-        kwargs_col["width"] = 54
-        kwargs_col["minWidth"] = 54
+        kwargs_col["width"] = 48
+        kwargs_col["minWidth"] = 48
     else:
         kwargs_col["valueFormatter"] = fmt_int if fmt_decimais == 0 else fmt_dec1
 
@@ -721,13 +721,20 @@ custom_css = {
     ".ag-pinned-left-cols-container .ag-cell[col-id='Time'], .ag-pinned-left-header .ag-header-cell[col-id='Time']": {
         "border-right": "2px solid #475569 !important",
     },
-    ".ag-header-cell-label": {"justify-content": "center"},
-    ".ag-pinned-left-header .ag-header-cell[col-id='Lineup'] .ag-header-cell-label": {
-        "justify-content": "flex-start",
-        "padding-left": "6px",
+    ".ag-header-cell-comp-wrapper": {
+        "justify-content": "center !important",
     },
-    ".ag-pinned-left-cols-container .ag-cell[col-id='Lineup']": {"padding-left": "6px !important"},
-    ".ag-header-cell-menu-button, .ag-header-cell-filter-button": {"display": "none !important"},
+    ".ag-header-cell-label": {
+        "justify-content": "center !important",
+        "width": "auto !important",
+        "flex": "0 1 auto !important",
+    },
+    ".ag-pinned-left-cols-container .ag-cell[col-id='Lineup']": {
+        "padding-left": "6px !important",
+    },
+    ".ag-header-cell-menu-button, .ag-header-cell-filter-button": {
+        "display": "none !important",
+    },
 }
 
 altura_tabela = min(max(len(tabela) * 29 + 37, 180), 520)
