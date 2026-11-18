@@ -722,12 +722,18 @@ custom_css = {
         "border-right": "2px solid #475569 !important",
     },
     ".ag-header-cell-comp-wrapper": {
+        "width": "100% !important",
+        "display": "flex !important",
         "justify-content": "center !important",
     },
     ".ag-header-cell-label": {
+        "flex-direction": "row !important",
         "justify-content": "center !important",
-        "width": "auto !important",
-        "flex": "0 1 auto !important",
+        "align-items": "center !important",
+        "width": "100% !important",
+    },
+    ".ag-header-cell-text": {
+        "text-align": "center !important",
     },
     ".ag-pinned-left-cols-container .ag-cell[col-id='Lineup']": {
         "padding-left": "6px !important",
