@@ -486,12 +486,23 @@ tamanho_comb = OPCOES_TAMANHO[tamanho_label]
 todos_atletas = sorted({p for tup in df_opcoes["JOGADORES_TUPLE"] for p in tup}, key=chave_num_atleta)
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
-jogos = sorted(df_opcoes["ID"].dropna().unique(), key=chave_ordenacao_mista)
-jogos_sel = st.sidebar.multiselect("Jogos (vazio = todos)", jogos, default=[])
+# Lê o estado atual de mando antes de montar Jogos para manter o widget abaixo de Jogos
+# e ainda assim filtrar dinamicamente as opções de partidas
+mando_atual = st.session_state.get("mando_sel", "Ambos")
+df_opcoes_mando = df_opcoes[df_opcoes["MANDO"] == mando_atual] if mando_atual != "Ambos" else df_opcoes
 
-mando_sel = st.sidebar.selectbox("Mandante ou Visitante?", ["Ambos", "Mandante", "Visitante"])
+jogos = sorted(df_opcoes_mando["ID"].dropna().unique(), key=chave_ordenacao_mista)
+jogos_validos_default = [j for j in st.session_state.get("jogos_sel", []) if j in jogos]
+if "jogos_sel" in st.session_state:
+    st.session_state["jogos_sel"] = jogos_validos_default
 
-df_opcoes_mando = df_opcoes[df_opcoes["MANDO"] == mando_sel] if mando_sel != "Ambos" else df_opcoes
+jogos_sel = st.sidebar.multiselect("Jogos (vazio = todos)", jogos, key="jogos_sel")
+
+mando_sel = st.sidebar.selectbox(
+    "Mandante ou Visitante?",
+    ["Ambos", "Mandante", "Visitante"],
+    key="mando_sel",
+)
 
 quartos = sorted(df_opcoes_mando["P"].dropna().unique(), key=chave_ordenacao_mista)
 quartos_sel = st.sidebar.multiselect("Períodos (vazio = todos)", quartos, default=[])
