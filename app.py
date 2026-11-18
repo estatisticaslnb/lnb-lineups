@@ -262,7 +262,7 @@ agg = df_exp.groupby(["Time", "Lineup"], as_index=False).agg(
     **{c: (c, "sum") for c in cols_soma},
 )
 
-# --- CÁLCULO OFICIAL DE POSSES EM SEGUNDO PLANO (FÓRMULA LNB: COEFICIENTE 4/9) ---
+# --- CÁLCULO EXATO DE POSSES EM SEGUNDO PLANO (FÓRMULA LNB: COEFICIENTE 4/9) ---
 fga = agg["2PA"] + agg["3PA"]
 fgm = agg["2PM"] + agg["3PM"]
 fga_a = agg["2PA_A"] + agg["3PA_A"]
@@ -270,7 +270,7 @@ fgm_a = agg["2PM_A"] + agg["3PM_A"]
 
 posses_off = fga + (4 / 9) * agg["FTA"] + agg["TO"] - agg["OR"]
 posses_def = fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"] - agg["OR_A"]
-agg["POSSES"] = ((posses_off + posses_def) / 2).round().astype(int)
+agg["POSSES"] = (posses_off + posses_def) / 2.0
 
 # --- FILTROS DE AMOSTRA MÍNIMA (JOGOS E MINUTOS) ---
 agg = agg[(agg["JO"] >= min_jogos) & ((agg["DUR_S"] / 60.0) >= min_minutos)].copy()
@@ -420,7 +420,7 @@ elif modo_exibicao == "Avançadas":
     min_float = agg["DUR_S"] / 60.0
 
     efg_off = np.where(fga > 0, ((fgm + 0.5 * agg["3PM"]) / fga * 100).round(1), 0.0)
-    tov_denom_off = (fga + (4 / 9) * agg["FTA"] + agg["TO"]).round(0)
+    tov_denom_off = fga + (4 / 9) * agg["FTA"] + agg["TO"]
     tov_off = np.where(tov_denom_off > 0, (agg["TO"] / tov_denom_off * 100).round(1), 0.0)
     orb_denom_off = agg["OR"] + agg["DR_A"]
     orb_off = np.where(orb_denom_off > 0, (agg["OR"] / orb_denom_off * 100).round(1), 0.0)
@@ -428,7 +428,7 @@ elif modo_exibicao == "Avançadas":
     off_rtg = ((agg["PTS"] / pos_div) * 100).round(1)
 
     efg_def = np.where(fga_a > 0, ((fgm_a + 0.5 * agg["3PM_A"]) / fga_a * 100).round(1), 0.0)
-    tov_denom_def = (fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]).round(0)
+    tov_denom_def = fga_a + (4 / 9) * agg["FTA_A"] + agg["TO_A"]
     tov_def = np.where(tov_denom_def > 0, (agg["TO_A"] / tov_denom_def * 100).round(1), 0.0)
     orb_denom_def = agg["OR_A"] + agg["DR"]
     orb_def = np.where(orb_denom_def > 0, (agg["OR_A"] / orb_denom_def * 100).round(1), 0.0)
