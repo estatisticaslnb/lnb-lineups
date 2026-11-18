@@ -547,15 +547,16 @@ st.markdown(
 )
 
 
-# --- CONFIGURAÇÃO DO AG-GRID (RANKING # DINÂMICO E COLUNAS CONGELADAS) ---
+# --- CONFIGURAÇÃO DO AG-GRID (SEM MENU NOS CABEÇALHOS E COM LARGURA LEGÍVEL) ---
 gb = GridOptionsBuilder.from_dataframe(tabela)
 gb.configure_default_column(
     sortable=True,
     resizable=True,
     filter=False,
     suppressMenu=True,
+    suppressHeaderMenuButton=True,
+    suppressHeaderFilterButton=True,
     cellStyle={"textAlign": "center"},
-    headerClass="ag-center-header",
 )
 
 # 1. Coluna # dinâmica (sempre 1, 2, 3... independente da ordenação)
@@ -565,21 +566,22 @@ gb.configure_column(
     headerName="#",
     pinned="left",
     sortable=False,
-    width=52,
-    minWidth=52,
-    maxWidth=60,
+    width=50,
+    minWidth=50,
+    maxWidth=58,
     valueGetter=rank_getter,
     cellStyle={"textAlign": "center", "fontWeight": "600", "color": "#475569"},
 )
 
 # 2. Coluna Lineup congelada e com largura ajustada ao maior texto
 chars_ref = float(agg["Lineup"].astype(str).str.len().quantile(0.98)) if not agg.empty else 20.0
-largura_lineup = min(max(int(chars_ref * 7.2 + 28), 145), 520)
+largura_lineup = min(max(int(chars_ref * 7.2 + 28), 150), 520)
 gb.configure_column(
     "Lineup",
     headerName="Lineup",
     pinned="left",
     width=largura_lineup,
+    minWidth=largura_lineup,
     cellStyle={"textAlign": "left", "fontWeight": "500"},
 )
 
@@ -589,6 +591,7 @@ gb.configure_column(
     headerName="Time",
     pinned="left",
     width=68,
+    minWidth=68,
     cellStyle={"textAlign": "center"},
 )
 
@@ -615,28 +618,36 @@ for col in tabela.columns:
     elif col in cols_vermelhas:
         estilo_celula["backgroundColor"] = "rgba(231, 76, 60, 0.16)"
 
+    largura_col = 72 if len(titulo_visivel) <= 4 else 88
+
     kwargs_col = {
         "headerName": titulo_visivel,
         "cellStyle": estilo_celula,
-        "width": 74 if len(titulo_visivel) <= 4 else 88,
+        "width": largura_col,
+        "minWidth": largura_col,
     }
 
     if titulo_visivel in ["+/-", "NETRTG"]:
         kwargs_col["valueFormatter"] = fmt_pm_int if fmt_decimais == 0 else fmt_pm_dec
     elif titulo_visivel == "JO":
         kwargs_col["valueFormatter"] = fmt_int
-        kwargs_col["width"] = 62
+        kwargs_col["width"] = 60
+        kwargs_col["minWidth"] = 60
     elif "FTA Rate" in titulo_visivel:
         kwargs_col["valueFormatter"] = fmt_dec3
-        kwargs_col["width"] = 90
+        kwargs_col["width"] = 92
+        kwargs_col["minWidth"] = 92
     elif "%" in titulo_visivel:
         kwargs_col["valueFormatter"] = fmt_pct
         kwargs_col["width"] = 78
+        kwargs_col["minWidth"] = 78
     elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
         kwargs_col["valueFormatter"] = fmt_dec1
-        kwargs_col["width"] = 82
-    elif titulo_visivel == "Minutos":
         kwargs_col["width"] = 84
+        kwargs_col["minWidth"] = 84
+    elif titulo_visivel == "Minutos":
+        kwargs_col["width"] = 86
+        kwargs_col["minWidth"] = 86
     else:
         kwargs_col["valueFormatter"] = fmt_int if fmt_decimais == 0 else fmt_dec1
 
@@ -655,6 +666,7 @@ grid_options = gb.build()
 custom_css = {
     ".ag-header-cell-label": {"justify-content": "center"},
     ".ag-pinned-left-header .ag-header-cell:nth-child(2) .ag-header-cell-label": {"justify-content": "flex-start"},
+    ".ag-header-cell-menu-button, .ag-header-cell-filter-button": {"display": "none !important"},
 }
 
 altura_tabela = min(max(len(tabela) * 34 + 44, 180), 520)
