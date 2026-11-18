@@ -460,7 +460,6 @@ def montar_box_score_simples(head_dict, fator_div, fator_mult, casas_decimais):
 
 # --- MONTAGEM DA TABELA CONFORME O MODO (MINUTOS EM SEGUNDOS NUMÉRICOS PARA ORDENAÇÃO EXATA) ---
 base_head = {
-    "#": np.arange(1, len(agg) + 1),
     "Lineup": agg["Lineup"],
     "Time": agg["Time"],
 }
@@ -558,7 +557,7 @@ st.markdown(
 )
 
 
-# --- CONFIGURAÇÃO DO AG-GRID (TEMA ALPINE MODERNO, GRADE NÍTIDA E COLUNAS COMPACTAS) ---
+# --- CONFIGURAÇÃO DO AG-GRID (TEMA ALPINE MODERNO E RANKING # DINÂMICO GARANTIDO) ---
 gb = GridOptionsBuilder.from_dataframe(tabela)
 gb.configure_default_column(
     sortable=True,
@@ -570,26 +569,7 @@ gb.configure_default_column(
     cellStyle={"textAlign": "center", "borderRight": "1px solid #94a3b8"},
 )
 
-# 1. Coluna # dinâmica (sempre 1, 2, 3... independente da ordenação)
-rank_getter = JsCode("function(params) { return params.node.rowIndex + 1; }")
-gb.configure_column(
-    "#",
-    headerName="#",
-    pinned="left",
-    sortable=False,
-    width=34,
-    minWidth=34,
-    maxWidth=40,
-    valueGetter=rank_getter,
-    cellStyle={
-        "textAlign": "center",
-        "fontWeight": "600",
-        "color": "#334155",
-        "borderRight": "1px solid #94a3b8",
-    },
-)
-
-# 2. Coluna Lineup congelada e medida pelo maior texto real da seleção
+# 1. Coluna Lineup congelada e medida pelo maior texto real da seleção
 max_px_lineup = float(agg["Lineup"].apply(medir_largura_texto_px).max()) if not agg.empty else 110.0
 largura_lineup = max(int(np.ceil(max_px_lineup)) + 16, 95)
 gb.configure_column(
@@ -605,7 +585,7 @@ gb.configure_column(
     },
 )
 
-# 3. Coluna Time congelada
+# 2. Coluna Time congelada
 gb.configure_column(
     "Time",
     headerName="Time",
@@ -634,7 +614,7 @@ fmt_pm_dec = JsCode(
 )
 
 for col in tabela.columns:
-    if col in ["#", "Lineup", "Time"]:
+    if col in ["Lineup", "Time"]:
         continue
 
     titulo_visivel = col.strip()
@@ -685,15 +665,44 @@ for col in tabela.columns:
 
     gb.configure_column(col, **kwargs_col)
 
+refresh_rank_js = JsCode(
+    "function(params) { params.api.refreshCells({columns: ['rank_col'], force: true}); }"
+)
+
 gb.configure_grid_options(
     domLayout="normal",
     rowHeight=29,
     headerHeight=33,
     suppressMovableColumns=True,
     animateRows=False,
+    onSortChanged=refresh_rank_js,
+    onFilterChanged=refresh_rank_js,
 )
 
 grid_options = gb.build()
+
+# Insere a coluna # puramente dinâmica na primeira posição sem depender de campo fixo da linha
+rank_col_def = {
+    "colId": "rank_col",
+    "headerName": "#",
+    "pinned": "left",
+    "sortable": False,
+    "resizable": False,
+    "filter": False,
+    "suppressMenu": True,
+    "suppressHeaderMenuButton": True,
+    "width": 36,
+    "minWidth": 36,
+    "maxWidth": 42,
+    "valueGetter": JsCode("function(params) { return params.node.rowIndex + 1; }"),
+    "cellStyle": {
+        "textAlign": "center",
+        "fontWeight": "600",
+        "color": "#334155",
+        "borderRight": "1px solid #94a3b8",
+    },
+}
+grid_options["columnDefs"].insert(0, rank_col_def)
 
 custom_css = {
     ".ag-header-cell": {
