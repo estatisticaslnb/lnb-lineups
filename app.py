@@ -13,7 +13,7 @@ st.set_page_config(page_title="LNB Lineups", layout="wide")
 st.markdown(
     """
     <style>
-        html, body, [class*="css"] {
+        [data-testid="stSidebar"], [data-testid="stSidebar"] * {
             font-family: "Consolas", "Courier New", monospace !important;
             font-size: 13px !important;
         }
@@ -219,7 +219,7 @@ modo_exibicao = st.sidebar.selectbox(
 
 todos_times = sorted(df["Time"].dropna().unique(), key=nome_completo_time)
 times_sel = st.sidebar.multiselect(
-    "Equipe(s) (vazio = Todos os Times)",
+    "Time(s) (vazio = Todos)",
     todos_times,
     default=[],
     format_func=nome_completo_time,
