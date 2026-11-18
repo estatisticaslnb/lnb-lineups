@@ -21,6 +21,12 @@ st.markdown(
             min-width: 300px !important;
             max-width: 300px !important;
         }
+        [data-testid="stSidebar"] * {
+            font-size: 13px !important;
+        }
+        [data-testid="stSidebar"] h2 {
+            font-size: 18px !important;
+        }
         [data-testid="stSidebarUserContent"] {
             padding-top: 1.2rem !important;
         }
