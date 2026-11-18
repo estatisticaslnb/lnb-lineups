@@ -15,6 +15,7 @@ st.markdown(
     <style>
         html, body, [class*="css"] {
             font-family: "Consolas", "Courier New", monospace !important;
+            font-size: 13px !important;
         }
         .block-container {
             padding-top: 1.2rem !important;
@@ -201,7 +202,7 @@ df = load_data(planilha, os.path.getmtime(planilha))
 
 st.markdown(
     """
-    <h1 style="text-align: left; font-size: 28px; font-weight: 700; margin-top: 0px; margin-bottom: 10px; font-family: 'Consolas', 'Courier New', monospace;">
+    <h1 style="text-align: left; font-size: 24px; font-weight: 700; margin-top: 0px; margin-bottom: 10px; font-family: 'Consolas', 'Courier New', monospace;">
         NBB CAIXA 2026/2027
     </h1>
     """,
@@ -523,7 +524,7 @@ legenda_extra = (
 
 st.markdown(
     f"""
-    <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 8px; font-size: 13px; flex-wrap: wrap;">
+    <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap;">
         <span style="display: inline-flex; align-items: center; gap: 6px;">
             <span style="width: 14px; height: 14px; background-color: rgba(46, 204, 113, 0.28); border: 1px solid rgba(46, 204, 113, 0.6); border-radius: 3px; display: inline-block;"></span>
             <strong>Ofensivas</strong>
@@ -553,12 +554,9 @@ def fmt_plus_minus(val):
         return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
 
 
-max_chars_lineup = int(agg["Lineup"].astype(str).str.len().max()) if not agg.empty else 20
-largura_lineup = min(max(int(max_chars_lineup * 8.2 + 28), 160), 540)
-
 formatos = {}
 col_config = {
-    "_index": st.column_config.TextColumn("Lineup", alignment="left", width=largura_lineup)
+    "_index": st.column_config.TextColumn("Lineup", alignment="left")
 }
 
 for col in tabela.columns:
