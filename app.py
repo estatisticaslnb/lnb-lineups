@@ -585,15 +585,16 @@ gb.configure_column(
     },
 )
 
-# 2. Coluna Time congelada
+# 2. Coluna Time congelada (conteúdo com fonte Consolas monospace)
 gb.configure_column(
     "Time",
     headerName="Time",
     pinned="left",
-    width=44,
-    minWidth=44,
+    width=46,
+    minWidth=46,
     cellStyle={
         "textAlign": "center",
+        "fontFamily": "Consolas, 'Courier New', monospace",
         "borderRight": "1px solid #cbd5e1",
     },
 )
