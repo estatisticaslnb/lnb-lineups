@@ -145,11 +145,6 @@ def dur_to_sec(val):
     return 0
 
 
-def sec_to_dur(sec):
-    sec = int(round(sec))
-    return f"{sec // 60:02d}:{sec % 60:02d}"
-
-
 def chave_num_atleta(nome_str):
     m = re.search(r"\d+", str(nome_str))
     num = int(m.group()) if m else 999999
@@ -447,7 +442,7 @@ def montar_box_score_simples(head_dict, fator_div, fator_mult, casas_decimais):
     return pd.DataFrame(dados), list(cols_off.keys()), list(cols_def.keys())
 
 
-# --- MONTAGEM DA TABELA CONFORME O MODO ---
+# --- MONTAGEM DA TABELA CONFORME O MODO (MINUTOS EM SEGUNDOS NUMÉRICOS PARA ORDENAÇÃO EXATA) ---
 base_head = {
     "#": np.arange(1, len(agg) + 1),
     "Lineup": agg["Lineup"],
@@ -455,25 +450,25 @@ base_head = {
 }
 
 if modo_exibicao == "Total":
-    head = {**base_head, "Minutos": agg["DUR_S"].apply(sec_to_dur), "JO": agg["JO"]}
+    head = {**base_head, "Minutos": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, 1, 1, 0)
     fmt_decimais = 0
 
 elif modo_exibicao == "Média":
     jo_div = agg["JO"].replace(0, 1)
-    head = {**base_head, "Minutos": (agg["DUR_S"] / jo_div).apply(sec_to_dur), "JO": agg["JO"]}
+    head = {**base_head, "Minutos": (agg["DUR_S"] / jo_div).round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, jo_div, 1, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 40 Minutos":
     min_div = (agg["DUR_S"] / 60.0).replace(0, 1)
-    head = {**base_head, "Minutos": agg["DUR_S"].apply(sec_to_dur), "JO": agg["JO"]}
+    head = {**base_head, "Minutos": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, min_div, 40, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 100 Posses":
     pos_div = agg["POSSES"].replace(0, 1)
-    head = {**base_head, "Minutos": agg["DUR_S"].apply(sec_to_dur), "JO": agg["JO"]}
+    head = {**base_head, "Minutos": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, pos_div, 100, 1)
     fmt_decimais = 1
 
@@ -501,7 +496,7 @@ elif modo_exibicao == "Avançadas":
 
     dados_adv = {
         **base_head,
-        "Minutos": agg["DUR_S"].apply(sec_to_dur),
+        "Minutos": agg["DUR_S"].round(0).astype(int),
         "JO": agg["JO"],
         "PACE": pace,
         "eFG%": efg_off,
@@ -547,7 +542,7 @@ st.markdown(
 )
 
 
-# --- CONFIGURAÇÃO DO AG-GRID (COLUNAS COMPACTAS E GRADE VISÍVEL) ---
+# --- CONFIGURAÇÃO DO AG-GRID (COLUNAS MAIS ESTREITAS, GRADE VISÍVEL E MINUTOS NUMÉRICOS) ---
 gb = GridOptionsBuilder.from_dataframe(tabela)
 gb.configure_default_column(
     sortable=True,
@@ -556,7 +551,7 @@ gb.configure_default_column(
     suppressMenu=True,
     suppressHeaderMenuButton=True,
     suppressHeaderFilterButton=True,
-    cellStyle={"textAlign": "center", "borderRight": "1px solid #e2e8f0"},
+    cellStyle={"textAlign": "center"},
 )
 
 # 1. Coluna # dinâmica (sempre 1, 2, 3... independente da ordenação)
@@ -566,23 +561,23 @@ gb.configure_column(
     headerName="#",
     pinned="left",
     sortable=False,
-    width=44,
-    minWidth=44,
-    maxWidth=52,
+    width=38,
+    minWidth=38,
+    maxWidth=44,
     valueGetter=rank_getter,
-    cellStyle={"textAlign": "center", "fontWeight": "600", "color": "#475569", "borderRight": "1px solid #cbd5e1"},
+    cellStyle={"textAlign": "center", "fontWeight": "600", "color": "#334155"},
 )
 
-# 2. Coluna Lineup congelada e com largura ajustada ao texto
+# 2. Coluna Lineup congelada e mais enxuta
 chars_ref = float(agg["Lineup"].astype(str).str.len().quantile(0.95)) if not agg.empty else 20.0
-largura_lineup = min(max(int(chars_ref * 6.3 + 18), 130), 460)
+largura_lineup = min(max(int(chars_ref * 5.8 + 14), 115), 420)
 gb.configure_column(
     "Lineup",
     headerName="Lineup",
     pinned="left",
     width=largura_lineup,
     minWidth=largura_lineup,
-    cellStyle={"textAlign": "left", "fontWeight": "500", "borderRight": "1px solid #cbd5e1"},
+    cellStyle={"textAlign": "left", "fontWeight": "500"},
 )
 
 # 3. Coluna Time congelada
@@ -590,12 +585,15 @@ gb.configure_column(
     "Time",
     headerName="Time",
     pinned="left",
-    width=56,
-    minWidth=56,
-    cellStyle={"textAlign": "center", "borderRight": "2px solid #cbd5e1"},
+    width=48,
+    minWidth=48,
+    cellStyle={"textAlign": "center"},
 )
 
-# Formatadores JS para números, percentuais e +/-
+# Formatadores JS para números, minutos (MM:SS), percentuais e +/-
+fmt_dur = JsCode(
+    "function(p) { if (p.value == null) return ''; var s = Math.round(Number(p.value)); var m = Math.floor(s / 60); var r = s % 60; return (m < 10 ? '0' + m : m) + ':' + (r < 10 ? '0' + r : r); }"
+)
 fmt_int = JsCode("function(p) { return p.value == null ? '' : Math.round(p.value).toString(); }")
 fmt_dec1 = JsCode("function(p) { return p.value == null ? '' : Number(p.value).toFixed(1); }")
 fmt_dec3 = JsCode("function(p) { return p.value == null ? '' : Number(p.value).toFixed(3); }")
@@ -612,13 +610,13 @@ for col in tabela.columns:
         continue
 
     titulo_visivel = col.strip()
-    estilo_celula = {"textAlign": "center", "borderRight": "1px solid #e2e8f0"}
+    estilo_celula = {"textAlign": "center"}
     if col in cols_verdes:
         estilo_celula["backgroundColor"] = "rgba(46, 204, 113, 0.16)"
     elif col in cols_vermelhas:
         estilo_celula["backgroundColor"] = "rgba(231, 76, 60, 0.16)"
 
-    largura_col = 56 if len(titulo_visivel) <= 3 else (64 if len(titulo_visivel) <= 5 else 78)
+    largura_col = 46 if len(titulo_visivel) <= 3 else (54 if len(titulo_visivel) <= 5 else 66)
 
     kwargs_col = {
         "headerName": titulo_visivel,
@@ -629,27 +627,28 @@ for col in tabela.columns:
 
     if titulo_visivel in ["+/-", "NETRTG"]:
         kwargs_col["valueFormatter"] = fmt_pm_int if fmt_decimais == 0 else fmt_pm_dec
-        kwargs_col["width"] = 66
-        kwargs_col["minWidth"] = 66
+        kwargs_col["width"] = 56
+        kwargs_col["minWidth"] = 56
     elif titulo_visivel == "JO":
         kwargs_col["valueFormatter"] = fmt_int
-        kwargs_col["width"] = 48
-        kwargs_col["minWidth"] = 48
+        kwargs_col["width"] = 42
+        kwargs_col["minWidth"] = 42
     elif "FTA Rate" in titulo_visivel:
         kwargs_col["valueFormatter"] = fmt_dec3
-        kwargs_col["width"] = 78
-        kwargs_col["minWidth"] = 78
-    elif "%" in titulo_visivel:
-        kwargs_col["valueFormatter"] = fmt_pct
-        kwargs_col["width"] = 64
-        kwargs_col["minWidth"] = 64
-    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
-        kwargs_col["valueFormatter"] = fmt_dec1
         kwargs_col["width"] = 68
         kwargs_col["minWidth"] = 68
+    elif "%" in titulo_visivel:
+        kwargs_col["valueFormatter"] = fmt_pct
+        kwargs_col["width"] = 54
+        kwargs_col["minWidth"] = 54
+    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
+        kwargs_col["valueFormatter"] = fmt_dec1
+        kwargs_col["width"] = 58
+        kwargs_col["minWidth"] = 58
     elif titulo_visivel == "Minutos":
-        kwargs_col["width"] = 72
-        kwargs_col["minWidth"] = 72
+        kwargs_col["valueFormatter"] = fmt_dur
+        kwargs_col["width"] = 62
+        kwargs_col["minWidth"] = 62
     else:
         kwargs_col["valueFormatter"] = fmt_int if fmt_decimais == 0 else fmt_dec1
 
@@ -657,8 +656,8 @@ for col in tabela.columns:
 
 gb.configure_grid_options(
     domLayout="normal",
-    rowHeight=32,
-    headerHeight=36,
+    rowHeight=30,
+    headerHeight=34,
     suppressMovableColumns=True,
     animateRows=False,
 )
@@ -666,28 +665,32 @@ gb.configure_grid_options(
 grid_options = gb.build()
 
 custom_css = {
-    ".ag-root-wrapper": {"border": "1px solid #cbd5e1", "border-radius": "6px"},
-    ".ag-header": {"border-bottom": "1px solid #cbd5e1"},
+    ".ag-root-wrapper": {"border": "1px solid #94a3b8 !important", "border-radius": "6px"},
+    ".ag-header": {"border-bottom": "1px solid #94a3b8 !important", "background-color": "#f8fafc"},
     ".ag-header-cell": {
-        "padding-left": "4px !important",
-        "padding-right": "4px !important",
-        "border-right": "1px solid #cbd5e1 !important",
+        "padding-left": "2px !important",
+        "padding-right": "2px !important",
+        "border-right": "1px solid #94a3b8 !important",
     },
     ".ag-cell": {
-        "padding-left": "4px !important",
-        "padding-right": "4px !important",
-        "border-bottom": "1px solid #e2e8f0 !important",
+        "padding-left": "2px !important",
+        "padding-right": "2px !important",
+        "border-right": "1px solid #cbd5e1 !important",
+        "border-bottom": "1px solid #cbd5e1 !important",
+    },
+    ".ag-pinned-left-cols-container .ag-cell[col-id='Time'], .ag-pinned-left-header .ag-header-cell[col-id='Time']": {
+        "border-right": "2px solid #94a3b8 !important",
     },
     ".ag-header-cell-label": {"justify-content": "center"},
-    ".ag-pinned-left-header .ag-header-cell:nth-child(2) .ag-header-cell-label": {
+    ".ag-pinned-left-header .ag-header-cell[col-id='Lineup'] .ag-header-cell-label": {
         "justify-content": "flex-start",
-        "padding-left": "4px",
+        "padding-left": "6px",
     },
-    ".ag-pinned-left-cols-container .ag-cell[col-id='Lineup']": {"padding-left": "8px !important"},
+    ".ag-pinned-left-cols-container .ag-cell[col-id='Lineup']": {"padding-left": "6px !important"},
     ".ag-header-cell-menu-button, .ag-header-cell-filter-button": {"display": "none !important"},
 }
 
-altura_tabela = min(max(len(tabela) * 32 + 40, 180), 520)
+altura_tabela = min(max(len(tabela) * 30 + 38, 180), 520)
 
 AgGrid(
     tabela,
