@@ -2,6 +2,7 @@ import os
 import re
 import base64
 import datetime
+from functools import lru_cache
 from itertools import combinations
 import streamlit as st
 import pandas as pd
@@ -9,8 +10,20 @@ import numpy as np
 
 st.set_page_config(page_title="LNB Lineups", layout="wide")
 
+st.markdown(
+    """
+    <style>
+        html, body, [class*="css"] {
+            font-family: "JetBrains Mono", "Roboto Mono", "Consolas", monospace;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-def exibir_banner(prefixo, tipo="header"):
+
+@st.cache_data
+def carregar_banner_html(prefixo, tipo="header"):
     arquivos = os.listdir(".")
     img_path = next(
         (
@@ -21,7 +34,7 @@ def exibir_banner(prefixo, tipo="header"):
         None,
     )
     if not img_path:
-        return
+        return ""
 
     ext = os.path.splitext(img_path)[1].lower().replace(".", "")
     if ext == "jpg":
@@ -36,14 +49,17 @@ def exibir_banner(prefixo, tipo="header"):
         else "border-top: 1px solid #e2e8f0; margin-top: 24px;"
     )
 
-    st.markdown(
-        f"""
+    return f"""
         <div style="background-color: #ffffff; padding: 10px 16px; text-align: center; {borda}">
             <img src="data:image/{ext};base64,{b64}" style="max-height: 80px; max-width: 100%; height: auto; display: block; margin: 0 auto;" />
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    """
+
+
+def exibir_banner(prefixo, tipo="header"):
+    html = carregar_banner_html(prefixo, tipo)
+    if html:
+        st.markdown(html, unsafe_allow_html=True)
 
 
 # --- CABEÇALHO COM IMAGEM ---
@@ -127,6 +143,28 @@ def chave_ordenacao_mista(val):
     return (2, 999999, s)
 
 
+def normalizar_kinteto_tuple(kinteto_str):
+    if pd.isna(kinteto_str):
+        return ()
+    return tuple(
+        sorted(
+            {p.strip() for p in str(kinteto_str).split("/") if p.strip()},
+            key=chave_num_atleta,
+        )
+    )
+
+
+@lru_cache(maxsize=8192)
+def gerar_combinacoes_cached(jogadores_tuple, r):
+    if not jogadores_tuple:
+        return ()
+    if r == 5:
+        return (" / ".join(jogadores_tuple),)
+    if len(jogadores_tuple) < r:
+        return ()
+    return tuple(" / ".join(comb) for comb in combinations(jogadores_tuple, r))
+
+
 @st.cache_data
 def load_data(planilha, mtime):
     if planilha.lower().endswith(".csv"):
@@ -137,6 +175,7 @@ def load_data(planilha, mtime):
     df["DUR_S"] = df["D"].apply(dur_to_sec)
     df["ID"] = df["ID"].apply(limpar_valor_str)
     df["P"] = df["P"].apply(limpar_valor_str)
+    df["JOGADORES_TUPLE"] = df["Kinteto"].apply(normalizar_kinteto_tuple)
     return df
 
 
@@ -171,10 +210,10 @@ times_sel = st.sidebar.multiselect(
     "Equipe(s) (vazio = Todos os Times)",
     todos_times,
     default=[],
-    format_func=nome_completo_time
+    format_func=nome_completo_time,
 )
 
-df_time = df[df["Time"].isin(times_sel)].copy() if times_sel else df.copy()
+df_time = df[df["Time"].isin(times_sel)] if times_sel else df
 
 opcoes_tamanho = {
     "5 - Quintetos": 5,
@@ -187,12 +226,7 @@ tamanho_label = st.sidebar.selectbox("Tamanho da Combinação", list(opcoes_tama
 tamanho_comb = opcoes_tamanho[tamanho_label]
 
 todos_atletas = sorted(
-    {
-        p.strip()
-        for k in df_time["Kinteto"].dropna()
-        for p in str(k).split("/")
-        if p.strip()
-    },
+    {p for tup in df_time["JOGADORES_TUPLE"] for p in tup},
     key=chave_num_atleta,
 )
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
@@ -207,43 +241,39 @@ col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
 min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=1)
 
-# --- FILTRAGEM INICIAL ---
-df_filtrado = df_time[
-    (df_time["ID"].isin(jogos_sel)) &
-    (df_time["P"].isin(quartos_sel))
-].copy()
+# --- FILTRAGEM INICIAL (INCLUINDO ATLETAS ANTES DE EXPLODIR COMBINAÇÕES) ---
+mask_base = (df_time["ID"].isin(jogos_sel)) & (df_time["P"].isin(quartos_sel))
+
+if atletas_sel:
+    atletas_set = set(atletas_sel)
+    mask_atletas = df_time["JOGADORES_TUPLE"].apply(atletas_set.issubset)
+    mask_base = mask_base & mask_atletas
+
+df_filtrado = df_time[mask_base].copy()
 
 if df_filtrado.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
 
-
-# --- EXPANSÃO DE COMBINAÇÕES ---
-def gerar_combinacoes(kinteto_str, r):
-    if pd.isna(kinteto_str):
-        return []
-    jogadores = sorted(
-        {p.strip() for p in str(kinteto_str).split("/") if p.strip()},
-        key=chave_num_atleta,
+# --- EXPANSÃO DE COMBINAÇÕES (COM CACHE POR QUINTETO) ---
+if tamanho_comb == 5:
+    df_filtrado["Lineup"] = df_filtrado["JOGADORES_TUPLE"].apply(
+        lambda tup: " / ".join(tup) if tup else ""
     )
-    if not jogadores:
-        return []
-    if r == 5:
-        return [" / ".join(jogadores)]
-    if len(jogadores) < r:
-        return []
-    return [" / ".join(comb) for comb in combinations(jogadores, r)]
-
-
-df_filtrado["Lineup"] = df_filtrado["Kinteto"].apply(lambda x: gerar_combinacoes(x, tamanho_comb))
-df_exp = df_filtrado.explode("Lineup")
-df_exp = df_exp[df_exp["Lineup"].notna() & (df_exp["Lineup"] != "")]
-
-if atletas_sel:
-    mask = df_exp["Lineup"].apply(
-        lambda l: all(a in [p.strip() for p in str(l).split("/")] for a in atletas_sel)
+    df_exp = df_filtrado[df_filtrado["Lineup"] != ""]
+else:
+    df_filtrado["Lineup"] = df_filtrado["JOGADORES_TUPLE"].apply(
+        lambda tup: gerar_combinacoes_cached(tup, tamanho_comb)
     )
-    df_exp = df_exp[mask]
+    df_exp = df_filtrado.explode("Lineup")
+    df_exp = df_exp[df_exp["Lineup"].notna() & (df_exp["Lineup"] != "")]
+
+if atletas_sel and tamanho_comb < 5:
+    atletas_set = set(atletas_sel)
+    mask_comb = df_exp["Lineup"].apply(
+        lambda l: atletas_set.issubset(p.strip() for p in str(l).split("/"))
+    )
+    df_exp = df_exp[mask_comb]
 
 if df_exp.empty:
     st.warning("Nenhuma combinação encontrada para os filtros selecionados.")
@@ -257,7 +287,7 @@ cols_soma = [
     "OR_A", "DR_A", "REB_A", "AST_A", "TO_A", "STL_A", "BLK_A", "PF_A", "+/-",
 ]
 
-agg = df_exp.groupby(["Time", "Lineup"], as_index=False).agg(
+agg = df_exp.groupby(["Time", "Lineup"], as_index=False, sort=False).agg(
     JO=("ID", "nunique"),
     **{c: (c, "sum") for c in cols_soma},
 )
@@ -280,6 +310,16 @@ if agg.empty:
     st.stop()
 
 agg = agg.sort_values(by="DUR_S", ascending=False).reset_index(drop=True)
+
+total_linhas = len(agg)
+limite_padrao = 300
+if total_linhas > limite_padrao:
+    mostrar_tudo = st.sidebar.checkbox(
+        f"Exibir todas as {total_linhas} linhas (pode deixar o navegador mais lento)",
+        value=False,
+    )
+    if not mostrar_tudo:
+        agg = agg.iloc[:limite_padrao].copy()
 
 # --- VARIÁVEIS BASE ---
 fga = agg["2PA"] + agg["3PA"]
@@ -464,9 +504,15 @@ tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
 
 
 # --- LEGENDA DE CORES ACIMA DA TABELA ---
+legenda_extra = (
+    f'<span style="color: #64748b; margin-left: auto;">Exibindo Top {len(agg)} de {total_linhas} combinações (ordenadas por minutos)</span>'
+    if total_linhas > len(agg)
+    else ""
+)
+
 st.markdown(
-    """
-    <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 8px; font-size: 13px;">
+    f"""
+    <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 8px; font-size: 13px; flex-wrap: wrap;">
         <span style="display: inline-flex; align-items: center; gap: 6px;">
             <span style="width: 14px; height: 14px; background-color: rgba(46, 204, 113, 0.28); border: 1px solid rgba(46, 204, 113, 0.6); border-radius: 3px; display: inline-block;"></span>
             <strong>Ofensivas</strong>
@@ -475,6 +521,7 @@ st.markdown(
             <span style="width: 14px; height: 14px; background-color: rgba(231, 76, 60, 0.28); border: 1px solid rgba(231, 76, 60, 0.6); border-radius: 3px; display: inline-block;"></span>
             <strong>Defensivas</strong>
         </span>
+        {legenda_extra}
     </div>
     """,
     unsafe_allow_html=True,
@@ -495,9 +542,12 @@ def fmt_plus_minus(val):
         return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
 
 
+max_chars_lineup = int(agg["Lineup"].astype(str).str.len().max()) if not agg.empty else 20
+largura_lineup = min(max(int(max_chars_lineup * 8.2 + 28), 160), 540)
+
 formatos = {}
 col_config = {
-    "_index": st.column_config.TextColumn("Lineup", alignment="left")
+    "_index": st.column_config.TextColumn("Lineup", alignment="left", width=largura_lineup)
 }
 
 for col in tabela.columns:
