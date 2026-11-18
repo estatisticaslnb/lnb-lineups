@@ -558,7 +558,7 @@ st.markdown(
 )
 
 
-# --- CONFIGURAÇÃO DO AG-GRID (GRADE ESCURA UNIFORME, LINEUP AJUSTADO E COLUNAS COMPACTAS) ---
+# --- CONFIGURAÇÃO DO AG-GRID (GRADE ESCURA UNIFORME, OPACIDADE ORIGINAL E COLUNAS COMPACTAS) ---
 gb = GridOptionsBuilder.from_dataframe(tabela)
 gb.configure_default_column(
     sortable=True,
@@ -707,7 +707,7 @@ custom_css = {
         "--ag-header-column-resize-handle-display": "none",
     },
     ".ag-root-wrapper": {"border": "1px solid #0f172a !important", "border-radius": "6px"},
-    ".ag-header": {"border-bottom": "1px solid #0f172a !important", "background-color": "#f1f5f9"},
+    ".ag-header": {"border-bottom": "1px solid #0f172a !important", "background-color": "#f8fafc"},
     ".ag-header-cell": {
         "padding-left": "2px !important",
         "padding-right": "2px !important",
