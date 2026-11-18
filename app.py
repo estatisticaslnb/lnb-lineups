@@ -515,7 +515,7 @@ tabela, cols_verdes, cols_vermelhas, fmt_decimais = construir_tabela_exibicao(ag
 # 5. LEGENDA E RENDERIZAÇÃO DO AG-GRID
 # ==============================================================================
 legenda_extra = (
-    f'<span style="color: #64748b; margin-left: auto;">Exibindo Top {len(agg)} de {total_linhas} combinações (com mais minutos totais acumulados)</span>'
+    f'<span style="color: #64748b; margin-left: auto;">Exibindo o Top {len(agg)} de {total_linhas} combinações (com mais minutos totais acumulados)</span>'
     if total_linhas > len(agg)
     else ""
 )
