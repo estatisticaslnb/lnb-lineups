@@ -31,8 +31,11 @@ st.markdown(
             margin-top: 0px !important;
             padding-top: 0px !important;
         }
-        [data-testid="stSidebar"] [data-baseweb="select"] > div {
-            max-height: 95px !important;
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+            gap: 0.55rem !important;
+        }
+        [data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div:first-child {
+            max-height: 62px !important;
             overflow-y: auto !important;
         }
         [data-testid="stSidebarHeader"] {
