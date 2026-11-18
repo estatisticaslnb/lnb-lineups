@@ -471,7 +471,7 @@ col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
 min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=1)
 
-# Execução da agregação cacheada
+# Execução da agregação cacheada (sempre ordenada por minutos totais acumulados)
 agg = agregar_lineups(
     planilha,
     mtime_planilha,
@@ -500,6 +500,14 @@ if total_linhas > LIMITE_PADRAO_LINHAS:
     if not mostrar_tudo:
         agg = agg.iloc[:LIMITE_PADRAO_LINHAS].copy()
 
+if modo_exibicao == "Média":
+    agg = (
+        agg.assign(_DUR_MEDIA=agg["DUR_S"] / agg["JO"].replace(0, 1))
+        .sort_values(by=["_DUR_MEDIA", "DUR_S"], ascending=[False, False])
+        .drop(columns=["_DUR_MEDIA"])
+        .reset_index(drop=True)
+    )
+
 tabela, cols_verdes, cols_vermelhas, fmt_decimais = construir_tabela_exibicao(agg, modo_exibicao)
 
 
@@ -507,7 +515,7 @@ tabela, cols_verdes, cols_vermelhas, fmt_decimais = construir_tabela_exibicao(ag
 # 5. LEGENDA E RENDERIZAÇÃO DO AG-GRID
 # ==============================================================================
 legenda_extra = (
-    f'<span style="color: #64748b; margin-left: auto;">Exibindo Top {len(agg)} de {total_linhas} combinações (ordenadas por minutos totais)</span>'
+    f'<span style="color: #64748b; margin-left: auto;">Exibindo Top {len(agg)} de {total_linhas} combinações (com mais minutos totais acumulados)</span>'
     if total_linhas > len(agg)
     else ""
 )
