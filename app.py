@@ -260,7 +260,7 @@ def agregar_lineups(
     df_sub = df[df["Time"].isin(times_sel)] if times_sel else df
 
     mask = pd.Series(True, index=df_sub.index)
-    if mando_sel != "Todos":
+    if mando_sel != "Ambos":
         mask &= df_sub["MANDO"] == mando_sel
     if jogos_sel:
         mask &= df_sub["ID"].isin(jogos_sel)
@@ -486,12 +486,12 @@ tamanho_comb = OPCOES_TAMANHO[tamanho_label]
 todos_atletas = sorted({p for tup in df_opcoes["JOGADORES_TUPLE"] for p in tup}, key=chave_num_atleta)
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
-mando_sel = st.sidebar.selectbox("Mando de Quadra", ["Todos", "Mandante", "Visitante"])
-
-df_opcoes_mando = df_opcoes[df_opcoes["MANDO"] == mando_sel] if mando_sel != "Todos" else df_opcoes
-
-jogos = sorted(df_opcoes_mando["ID"].dropna().unique(), key=chave_ordenacao_mista)
+jogos = sorted(df_opcoes["ID"].dropna().unique(), key=chave_ordenacao_mista)
 jogos_sel = st.sidebar.multiselect("Jogos (vazio = todos)", jogos, default=[])
+
+mando_sel = st.sidebar.selectbox("Mandante ou Visitante?", ["Ambos", "Mandante", "Visitante"])
+
+df_opcoes_mando = df_opcoes[df_opcoes["MANDO"] == mando_sel] if mando_sel != "Ambos" else df_opcoes
 
 quartos = sorted(df_opcoes_mando["P"].dropna().unique(), key=chave_ordenacao_mista)
 quartos_sel = st.sidebar.multiselect("Períodos (vazio = todos)", quartos, default=[])
