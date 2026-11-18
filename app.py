@@ -557,7 +557,7 @@ st.markdown(
 )
 
 
-# --- CONFIGURAÇÃO DO AG-GRID (TODOS OS CABEÇALHOS CENTRALIZADOS E LINEUP À ESQUERDA NO CORPO) ---
+# --- CONFIGURAÇÃO DO AG-GRID (GRADE 100% UNIFORME ENTRE LINHAS E COLUNAS) ---
 gb = GridOptionsBuilder.from_dataframe(tabela)
 gb.configure_default_column(
     sortable=True,
@@ -566,7 +566,7 @@ gb.configure_default_column(
     suppressMenu=True,
     suppressHeaderMenuButton=True,
     suppressHeaderFilterButton=True,
-    cellStyle={"textAlign": "center", "borderRight": "1px solid #94a3b8"},
+    cellStyle={"textAlign": "center", "borderRight": "1px solid #cbd5e1"},
 )
 
 # 1. Coluna Lineup congelada (cabeçalho centralizado via CSS global; células alinhadas à esquerda)
@@ -581,7 +581,7 @@ gb.configure_column(
     cellStyle={
         "textAlign": "left",
         "fontWeight": "500",
-        "borderRight": "1px solid #94a3b8",
+        "borderRight": "1px solid #cbd5e1",
     },
 )
 
@@ -594,7 +594,7 @@ gb.configure_column(
     minWidth=44,
     cellStyle={
         "textAlign": "center",
-        "borderRight": "2px solid #475569",
+        "borderRight": "1px solid #cbd5e1",
     },
 )
 
@@ -620,7 +620,7 @@ for col in tabela.columns:
     titulo_visivel = col.strip()
     estilo_celula = {
         "textAlign": "center",
-        "borderRight": "1px solid #94a3b8",
+        "borderRight": "1px solid #cbd5e1",
     }
     if col in cols_verdes:
         estilo_celula["backgroundColor"] = "rgba(46, 204, 113, 0.16)"
@@ -681,7 +681,6 @@ gb.configure_grid_options(
 
 grid_options = gb.build()
 
-# Insere a coluna # puramente dinâmica na primeira posição sem depender de campo fixo da linha
 rank_col_def = {
     "colId": "rank_col",
     "headerName": "#",
@@ -699,27 +698,37 @@ rank_col_def = {
         "textAlign": "center",
         "fontWeight": "600",
         "color": "#334155",
-        "borderRight": "1px solid #94a3b8",
+        "borderRight": "1px solid #cbd5e1",
     },
 }
 grid_options["columnDefs"].insert(0, rank_col_def)
 
 custom_css = {
+    ".ag-root-wrapper": {
+        "border": "1px solid #94a3b8 !important",
+        "border-radius": "6px !important",
+    },
+    ".ag-header": {
+        "border-bottom": "1px solid #cbd5e1 !important",
+    },
+    ".ag-row": {
+        "border-bottom": "none !important",
+    },
     ".ag-header-cell": {
         "padding-left": "2px !important",
         "padding-right": "2px !important",
-        "border-right": "1px solid #94a3b8 !important",
+        "border-right": "1px solid #cbd5e1 !important",
         "font-size": "12.5px !important",
     },
     ".ag-cell": {
         "padding-left": "2px !important",
         "padding-right": "2px !important",
-        "border-right": "1px solid #94a3b8 !important",
+        "border-right": "1px solid #cbd5e1 !important",
         "border-bottom": "1px solid #cbd5e1 !important",
         "font-size": "12.5px !important",
     },
-    ".ag-pinned-left-cols-container .ag-cell[col-id='Time'], .ag-pinned-left-header .ag-header-cell[col-id='Time']": {
-        "border-right": "2px solid #475569 !important",
+    ".ag-pinned-left-cols-container, .ag-pinned-left-header": {
+        "border-right": "none !important",
     },
     ".ag-header-cell-comp-wrapper": {
         "width": "100% !important",
