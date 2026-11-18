@@ -17,6 +17,10 @@ st.markdown(
             padding-top: 1.2rem !important;
             padding-bottom: 1.5rem !important;
         }
+        [data-testid="stSidebar"] {
+            min-width: 300px !important;
+            max-width: 300px !important;
+        }
         [data-testid="stSidebarUserContent"] {
             padding-top: 1.2rem !important;
         }
@@ -52,13 +56,13 @@ def carregar_banner_html(prefixo, tipo="header"):
         b64 = base64.b64encode(f.read()).decode("utf-8")
 
     borda = (
-        "border-bottom: 1px solid #e2e8f0; margin-bottom: 12px;"
+        "border-bottom: 1px solid #e2e8f0; margin-bottom: 16px;"
         if tipo == "header"
-        else "border-top: 1px solid #e2e8f0; margin-top: 20px;"
+        else "border-top: 1px solid #e2e8f0; margin-top: 24px;"
     )
 
     return f"""
-        <div style="background-color: #ffffff; padding: 8px 16px; text-align: center; {borda}">
+        <div style="background-color: #ffffff; padding: 10px 16px; text-align: center; {borda}">
             <img src="data:image/{ext};base64,{b64}" style="max-height: 80px; max-width: 100%; height: auto; display: block; margin: 0 auto;" />
         </div>
     """
