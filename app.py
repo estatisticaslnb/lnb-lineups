@@ -244,12 +244,12 @@ st.sidebar.header("Filtros")
 
 modo_exibicao = st.sidebar.selectbox(
     "Modo de Exibição",
-    ["Total", "Média", "Por 40 Minutos", "Por 100 Posses", "Avançadas"],
+    ["Total", "Média", "Por 40 Minutos", "Por 100 Posses ~", "Avançadas"],
 )
 
 todos_times = sorted(df["Time"].dropna().unique(), key=nome_completo_time)
 times_sel = st.sidebar.multiselect(
-    "Time(s) (vazio = Todos)",
+    "Time(s) (vazio = todos)",
     todos_times,
     default=[],
     format_func=nome_completo_time,
@@ -274,10 +274,10 @@ todos_atletas = sorted(
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
 jogos = sorted(df_time["ID"].dropna().unique(), key=chave_ordenacao_mista)
-jogos_sel = st.sidebar.multiselect("Jogos (vazio = Todos)", jogos, default=[])
+jogos_sel = st.sidebar.multiselect("Jogos (vazio = todos)", jogos, default=[])
 
 quartos = sorted(df_time["P"].dropna().unique(), key=chave_ordenacao_mista)
-quartos_sel = st.sidebar.multiselect("Períodos (vazio = Todos)", quartos, default=[])
+quartos_sel = st.sidebar.multiselect("Períodos (vazio = todos)", quartos, default=[])
 
 col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
@@ -482,7 +482,7 @@ elif modo_exibicao == "Por 40 Minutos":
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, min_div, 40, 1)
     fmt_decimais = 1
 
-elif modo_exibicao == "Por 100 Posses":
+elif modo_exibicao == "Por 100 Posses ~":
     pos_div = agg["POSSES"].replace(0, 1)
     head = {**base_head, "Min.": agg["DUR_S"].round(0).astype(int), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, pos_div, 100, 1)
@@ -586,16 +586,17 @@ gb.configure_column(
     },
 )
 
-# 2. Coluna Time congelada (conteúdo com fonte Consolas monospace)
+# 2. Coluna Time congelada (conteúdo com fonte Consolas monospace 13px)
 gb.configure_column(
     "Time",
     headerName="Time",
     pinned="left",
-    width=46,
-    minWidth=46,
+    width=48,
+    minWidth=48,
     cellStyle={
         "textAlign": "center",
         "fontFamily": "Consolas, 'Courier New', monospace",
+        "fontSize": "13px",
         "borderRight": "1px solid #cbd5e1",
     },
 )
@@ -748,6 +749,9 @@ custom_css = {
     },
     ".ag-pinned-left-cols-container .ag-cell[col-id='Lineup']": {
         "padding-left": "6px !important",
+    },
+    ".ag-pinned-left-cols-container .ag-cell[col-id='Time']": {
+        "font-size": "13px !important",
     },
     ".ag-header-cell-menu-button, .ag-header-cell-filter-button": {
         "display": "none !important",
