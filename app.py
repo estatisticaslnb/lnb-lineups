@@ -180,6 +180,22 @@ def normalizar_kinteto_tuple(kinteto_str):
     )
 
 
+def medir_largura_texto_px(texto):
+    largura = 0.0
+    for ch in str(texto):
+        if ch in " .,-/'":
+            largura += 3.6
+        elif ch in "ilI1|!":
+            largura += 4.2
+        elif ch in "MWmw@#":
+            largura += 10.2
+        elif ch.isupper() or ch.isdigit():
+            largura += 7.8
+        else:
+            largura += 6.5
+    return largura
+
+
 @lru_cache(maxsize=8192)
 def gerar_combinacoes_cached(jogadores_tuple, r):
     if not jogadores_tuple:
@@ -542,7 +558,7 @@ st.markdown(
 )
 
 
-# --- CONFIGURAÇÃO DO AG-GRID (COLUNAS MAIS ESTREITAS, GRADE VISÍVEL E MINUTOS NUMÉRICOS) ---
+# --- CONFIGURAÇÃO DO AG-GRID (GRADE NÍTIDA, LINEUP AJUSTADO AO MAIOR TEXTO E COLUNAS COMPACTAS) ---
 gb = GridOptionsBuilder.from_dataframe(tabela)
 gb.configure_default_column(
     sortable=True,
@@ -551,7 +567,7 @@ gb.configure_default_column(
     suppressMenu=True,
     suppressHeaderMenuButton=True,
     suppressHeaderFilterButton=True,
-    cellStyle={"textAlign": "center"},
+    cellStyle={"textAlign": "center", "borderRight": "1px solid #cbd5e1"},
 )
 
 # 1. Coluna # dinâmica (sempre 1, 2, 3... independente da ordenação)
@@ -561,23 +577,32 @@ gb.configure_column(
     headerName="#",
     pinned="left",
     sortable=False,
-    width=38,
-    minWidth=38,
-    maxWidth=44,
+    width=34,
+    minWidth=34,
+    maxWidth=40,
     valueGetter=rank_getter,
-    cellStyle={"textAlign": "center", "fontWeight": "600", "color": "#334155"},
+    cellStyle={
+        "textAlign": "center",
+        "fontWeight": "600",
+        "color": "#334155",
+        "borderRight": "1px solid #94a3b8",
+    },
 )
 
-# 2. Coluna Lineup congelada e mais enxuta
-chars_ref = float(agg["Lineup"].astype(str).str.len().quantile(0.95)) if not agg.empty else 20.0
-largura_lineup = min(max(int(chars_ref * 5.8 + 14), 115), 420)
+# 2. Coluna Lineup congelada e medida pelo maior texto real da seleção
+max_px_lineup = float(agg["Lineup"].apply(medir_largura_texto_px).max()) if not agg.empty else 110.0
+largura_lineup = max(int(np.ceil(max_px_lineup)) + 16, 95)
 gb.configure_column(
     "Lineup",
     headerName="Lineup",
     pinned="left",
     width=largura_lineup,
     minWidth=largura_lineup,
-    cellStyle={"textAlign": "left", "fontWeight": "500"},
+    cellStyle={
+        "textAlign": "left",
+        "fontWeight": "500",
+        "borderRight": "1px solid #94a3b8",
+    },
 )
 
 # 3. Coluna Time congelada
@@ -585,9 +610,12 @@ gb.configure_column(
     "Time",
     headerName="Time",
     pinned="left",
-    width=48,
-    minWidth=48,
-    cellStyle={"textAlign": "center"},
+    width=44,
+    minWidth=44,
+    cellStyle={
+        "textAlign": "center",
+        "borderRight": "2px solid #64748b",
+    },
 )
 
 # Formatadores JS para números, minutos (MM:SS), percentuais e +/-
@@ -610,13 +638,16 @@ for col in tabela.columns:
         continue
 
     titulo_visivel = col.strip()
-    estilo_celula = {"textAlign": "center"}
+    estilo_celula = {
+        "textAlign": "center",
+        "borderRight": "1px solid #cbd5e1",
+    }
     if col in cols_verdes:
         estilo_celula["backgroundColor"] = "rgba(46, 204, 113, 0.16)"
     elif col in cols_vermelhas:
         estilo_celula["backgroundColor"] = "rgba(231, 76, 60, 0.16)"
 
-    largura_col = 46 if len(titulo_visivel) <= 3 else (54 if len(titulo_visivel) <= 5 else 66)
+    largura_col = 40 if len(titulo_visivel) <= 3 else (46 if len(titulo_visivel) <= 5 else 56)
 
     kwargs_col = {
         "headerName": titulo_visivel,
@@ -627,28 +658,28 @@ for col in tabela.columns:
 
     if titulo_visivel in ["+/-", "NETRTG"]:
         kwargs_col["valueFormatter"] = fmt_pm_int if fmt_decimais == 0 else fmt_pm_dec
-        kwargs_col["width"] = 56
-        kwargs_col["minWidth"] = 56
+        kwargs_col["width"] = 48
+        kwargs_col["minWidth"] = 48
     elif titulo_visivel == "JO":
         kwargs_col["valueFormatter"] = fmt_int
-        kwargs_col["width"] = 42
-        kwargs_col["minWidth"] = 42
+        kwargs_col["width"] = 36
+        kwargs_col["minWidth"] = 36
     elif "FTA Rate" in titulo_visivel:
         kwargs_col["valueFormatter"] = fmt_dec3
-        kwargs_col["width"] = 68
-        kwargs_col["minWidth"] = 68
-    elif "%" in titulo_visivel:
-        kwargs_col["valueFormatter"] = fmt_pct
-        kwargs_col["width"] = 54
-        kwargs_col["minWidth"] = 54
-    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
-        kwargs_col["valueFormatter"] = fmt_dec1
         kwargs_col["width"] = 58
         kwargs_col["minWidth"] = 58
+    elif "%" in titulo_visivel:
+        kwargs_col["valueFormatter"] = fmt_pct
+        kwargs_col["width"] = 48
+        kwargs_col["minWidth"] = 48
+    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
+        kwargs_col["valueFormatter"] = fmt_dec1
+        kwargs_col["width"] = 52
+        kwargs_col["minWidth"] = 52
     elif titulo_visivel == "Minutos":
         kwargs_col["valueFormatter"] = fmt_dur
-        kwargs_col["width"] = 62
-        kwargs_col["minWidth"] = 62
+        kwargs_col["width"] = 54
+        kwargs_col["minWidth"] = 54
     else:
         kwargs_col["valueFormatter"] = fmt_int if fmt_decimais == 0 else fmt_dec1
 
@@ -656,8 +687,8 @@ for col in tabela.columns:
 
 gb.configure_grid_options(
     domLayout="normal",
-    rowHeight=30,
-    headerHeight=34,
+    rowHeight=29,
+    headerHeight=33,
     suppressMovableColumns=True,
     animateRows=False,
 )
@@ -671,15 +702,17 @@ custom_css = {
         "padding-left": "2px !important",
         "padding-right": "2px !important",
         "border-right": "1px solid #94a3b8 !important",
+        "font-size": "12.5px !important",
     },
     ".ag-cell": {
         "padding-left": "2px !important",
         "padding-right": "2px !important",
         "border-right": "1px solid #cbd5e1 !important",
         "border-bottom": "1px solid #cbd5e1 !important",
+        "font-size": "12.5px !important",
     },
     ".ag-pinned-left-cols-container .ag-cell[col-id='Time'], .ag-pinned-left-header .ag-header-cell[col-id='Time']": {
-        "border-right": "2px solid #94a3b8 !important",
+        "border-right": "2px solid #64748b !important",
     },
     ".ag-header-cell-label": {"justify-content": "center"},
     ".ag-pinned-left-header .ag-header-cell[col-id='Lineup'] .ag-header-cell-label": {
@@ -690,7 +723,7 @@ custom_css = {
     ".ag-header-cell-menu-button, .ag-header-cell-filter-button": {"display": "none !important"},
 }
 
-altura_tabela = min(max(len(tabela) * 30 + 38, 180), 520)
+altura_tabela = min(max(len(tabela) * 29 + 37, 180), 520)
 
 AgGrid(
     tabela,
