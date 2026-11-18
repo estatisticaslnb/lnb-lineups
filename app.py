@@ -110,14 +110,7 @@ def chave_num_atleta(nome_str):
 
 
 @st.cache_data
-def load_data():
-    arquivos = os.listdir(".")
-    planilha = next((f for f in arquivos if f.lower().endswith((".xlsx", ".xls", ".csv"))), None)
-
-    if not planilha:
-        st.error(f"Nenhuma planilha encontrada no repositório. Arquivos atuais: {arquivos}")
-        st.stop()
-
+def load_data(planilha, mtime):
     if planilha.lower().endswith(".csv"):
         df = pd.read_csv(planilha)
     else:
@@ -127,7 +120,14 @@ def load_data():
     return df
 
 
-df = load_data()
+arquivos = os.listdir(".")
+planilha = next((f for f in arquivos if f.lower().endswith((".xlsx", ".xls", ".csv"))), None)
+
+if not planilha:
+    st.error(f"Nenhuma planilha encontrada no repositório. Arquivos atuais: {arquivos}")
+    st.stop()
+
+df = load_data(planilha, os.path.getmtime(planilha))
 
 st.markdown(
     """
