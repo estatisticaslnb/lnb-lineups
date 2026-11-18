@@ -1,3 +1,4 @@
 [theme]
 font = "Consolas, monospace"
+codeFont = "sans-serif"
 baseFontSize = 13
