@@ -16,6 +16,8 @@ st.markdown(
         .block-container {
             padding-top: 1.2rem !important;
             padding-bottom: 1.5rem !important;
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
         }
         [data-testid="stSidebar"] {
             min-width: 300px !important;
@@ -28,6 +30,10 @@ st.markdown(
             font-size: 18px !important;
             margin-top: 0px !important;
             padding-top: 0px !important;
+        }
+        [data-testid="stSidebar"] [data-baseweb="select"] > div {
+            max-height: 95px !important;
+            overflow-y: auto !important;
         }
         [data-testid="stSidebarHeader"] {
             height: 1.8rem !important;
