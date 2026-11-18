@@ -7,6 +7,7 @@ from itertools import combinations
 import streamlit as st
 import pandas as pd
 import numpy as np
+from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
 st.set_page_config(page_title="LNB Lineups", layout="wide")
 
@@ -33,10 +34,6 @@ st.markdown(
         }
         [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
             gap: 0.55rem !important;
-        }
-        [data-testid="stSidebar"] .stMultiSelect [data-baseweb="select"] > div:first-child {
-            max-height: 62px !important;
-            overflow-y: auto !important;
         }
         [data-testid="stSidebarHeader"] {
             height: 1.8rem !important;
@@ -266,7 +263,7 @@ todos_atletas = sorted(
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
 jogos = sorted(df_time["ID"].dropna().unique(), key=chave_ordenacao_mista)
-jogos_sel = st.sidebar.multiselect("Jogos", jogos, default=jogos)
+jogos_sel = st.sidebar.multiselect("Jogos (vazio = Todos)", jogos, default=[])
 
 quartos = sorted(df_time["P"].dropna().unique(), key=chave_ordenacao_mista)
 quartos_sel = st.sidebar.multiselect("Períodos", quartos, default=quartos)
@@ -276,7 +273,8 @@ min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
 min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=1)
 
 # --- FILTRAGEM INICIAL (INCLUINDO ATLETAS ANTES DE EXPLODIR COMBINAÇÕES) ---
-mask_base = (df_time["ID"].isin(jogos_sel)) & (df_time["P"].isin(quartos_sel))
+jogos_ativos = jogos_sel if jogos_sel else jogos
+mask_base = (df_time["ID"].isin(jogos_ativos)) & (df_time["P"].isin(quartos_sel))
 
 if atletas_sel:
     atletas_set = set(atletas_sel)
@@ -450,42 +448,32 @@ def montar_box_score_simples(head_dict, fator_div, fator_mult, casas_decimais):
 
 
 # --- MONTAGEM DA TABELA CONFORME O MODO ---
+base_head = {
+    "#": np.arange(1, len(agg) + 1),
+    "Lineup": agg["Lineup"],
+    "Time": agg["Time"],
+}
+
 if modo_exibicao == "Total":
-    head = {
-        "Time": agg["Time"],
-        "Minutos": agg["DUR_S"].apply(sec_to_dur),
-        "JO": agg["JO"],
-    }
+    head = {**base_head, "Minutos": agg["DUR_S"].apply(sec_to_dur), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, 1, 1, 0)
     fmt_decimais = 0
 
 elif modo_exibicao == "Média":
     jo_div = agg["JO"].replace(0, 1)
-    head = {
-        "Time": agg["Time"],
-        "Minutos": (agg["DUR_S"] / jo_div).apply(sec_to_dur),
-        "JO": agg["JO"],
-    }
+    head = {**base_head, "Minutos": (agg["DUR_S"] / jo_div).apply(sec_to_dur), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, jo_div, 1, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 40 Minutos":
     min_div = (agg["DUR_S"] / 60.0).replace(0, 1)
-    head = {
-        "Time": agg["Time"],
-        "Minutos": agg["DUR_S"].apply(sec_to_dur),
-        "JO": agg["JO"],
-    }
+    head = {**base_head, "Minutos": agg["DUR_S"].apply(sec_to_dur), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, min_div, 40, 1)
     fmt_decimais = 1
 
 elif modo_exibicao == "Por 100 Posses":
     pos_div = agg["POSSES"].replace(0, 1)
-    head = {
-        "Time": agg["Time"],
-        "Minutos": agg["DUR_S"].apply(sec_to_dur),
-        "JO": agg["JO"],
-    }
+    head = {**base_head, "Minutos": agg["DUR_S"].apply(sec_to_dur), "JO": agg["JO"]}
     tabela, cols_verdes, cols_vermelhas = montar_box_score_simples(head, pos_div, 100, 1)
     fmt_decimais = 1
 
@@ -512,7 +500,7 @@ elif modo_exibicao == "Avançadas":
     pace = np.where(min_float > 0, ((agg["POSSES"] / min_float) * 40).round(1), 0.0)
 
     dados_adv = {
-        "Time": agg["Time"],
+        **base_head,
         "Minutos": agg["DUR_S"].apply(sec_to_dur),
         "JO": agg["JO"],
         "PACE": pace,
@@ -533,13 +521,10 @@ elif modo_exibicao == "Avançadas":
     cols_vermelhas = ["eFG% ", "TOV% ", "ORB% ", "FTA Rate ", "DEFRTG"]
     fmt_decimais = 1
 
-# --- CONGELA A COLUNA LINEUP COMO ÍNDICE SIMPLES ---
-tabela.index = pd.Index(agg["Lineup"].values, name="Lineup")
-
 
 # --- LEGENDA DE CORES ACIMA DA TABELA ---
 legenda_extra = (
-    f'<span style="color: #64748b; margin-left: auto;">Exibindo Top {len(agg)} de {total_linhas} combinações (ordenadas por minutos)</span>'
+    f'<span style="color: #64748b; margin-left: auto;">Exibindo Top {len(agg)} de {total_linhas} combinações (ordenadas por minutos totais)</span>'
     if total_linhas > len(agg)
     else ""
 )
@@ -562,60 +547,128 @@ st.markdown(
 )
 
 
-# --- FORMATAÇÃO VISUAL, CENTRALIZAÇÃO E CORES POR BLOCO ---
-def fmt_plus_minus(val):
-    if pd.isna(val):
-        return ""
-    if fmt_decimais == 0:
-        v = int(round(val))
-        return f"+{v}" if v > 0 else ("0" if v == 0 else f"{v}")
-    else:
-        v = round(float(val), 1)
-        if v == 0:
-            return "0.0"
-        return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
-
-
-chars_ref = float(agg["Lineup"].astype(str).str.len().quantile(0.98)) if not agg.empty else 20.0
-largura_lineup = min(max(int(chars_ref * 7.0 + 24), 140), 520)
-
-formatos = {}
-col_config = {
-    "_index": st.column_config.TextColumn("Lineup", alignment="left", width=largura_lineup)
-}
-
-for col in tabela.columns:
-    titulo_visivel = col.strip()
-    if titulo_visivel in ["+/-", "NETRTG"]:
-        formatos[col] = fmt_plus_minus
-        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
-    elif titulo_visivel == "JO":
-        formatos[col] = "{:.0f}"
-        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
-    elif "FTA Rate" in titulo_visivel:
-        formatos[col] = "{:.3f}"
-        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
-    elif "%" in titulo_visivel:
-        formatos[col] = "{:.1f}%"
-        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
-    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
-        formatos[col] = "{:.1f}"
-        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
-    elif titulo_visivel in ["Time", "Minutos"]:
-        col_config[col] = st.column_config.TextColumn(titulo_visivel, alignment="center")
-    else:
-        formatos[col] = "{:.0f}" if fmt_decimais == 0 else "{:.1f}"
-        col_config[col] = st.column_config.NumberColumn(titulo_visivel, alignment="center")
-
-tabela_estilizada = (
-    tabela.style
-    .format(formatos)
-    .set_properties(subset=cols_verdes, **{"background-color": "rgba(46, 204, 113, 0.16)"})
-    .set_properties(subset=cols_vermelhas, **{"background-color": "rgba(231, 76, 60, 0.16)"})
+# --- CONFIGURAÇÃO DO AG-GRID (RANKING # DINÂMICO E COLUNAS CONGELADAS) ---
+gb = GridOptionsBuilder.from_dataframe(tabela)
+gb.configure_default_column(
+    sortable=True,
+    resizable=True,
+    filter=False,
+    suppressMenu=True,
+    cellStyle={"textAlign": "center"},
+    headerClass="ag-center-header",
 )
 
-altura_tabela = min(max(len(tabela) * 35 + 42, 180), 500)
-st.dataframe(tabela_estilizada, column_config=col_config, height=altura_tabela, use_container_width=True)
+# 1. Coluna # dinâmica (sempre 1, 2, 3... independente da ordenação)
+rank_getter = JsCode("function(params) { return params.node.rowIndex + 1; }")
+gb.configure_column(
+    "#",
+    headerName="#",
+    pinned="left",
+    sortable=False,
+    width=52,
+    minWidth=52,
+    maxWidth=60,
+    valueGetter=rank_getter,
+    cellStyle={"textAlign": "center", "fontWeight": "600", "color": "#475569"},
+)
+
+# 2. Coluna Lineup congelada e com largura ajustada ao maior texto
+chars_ref = float(agg["Lineup"].astype(str).str.len().quantile(0.98)) if not agg.empty else 20.0
+largura_lineup = min(max(int(chars_ref * 7.2 + 28), 145), 520)
+gb.configure_column(
+    "Lineup",
+    headerName="Lineup",
+    pinned="left",
+    width=largura_lineup,
+    cellStyle={"textAlign": "left", "fontWeight": "500"},
+)
+
+# 3. Coluna Time congelada
+gb.configure_column(
+    "Time",
+    headerName="Time",
+    pinned="left",
+    width=68,
+    cellStyle={"textAlign": "center"},
+)
+
+# Formatadores JS para números, percentuais e +/-
+fmt_int = JsCode("function(p) { return p.value == null ? '' : Math.round(p.value).toString(); }")
+fmt_dec1 = JsCode("function(p) { return p.value == null ? '' : Number(p.value).toFixed(1); }")
+fmt_dec3 = JsCode("function(p) { return p.value == null ? '' : Number(p.value).toFixed(3); }")
+fmt_pct = JsCode("function(p) { return p.value == null ? '' : Number(p.value).toFixed(1) + '%'; }")
+fmt_pm_int = JsCode(
+    "function(p) { if (p.value == null) return ''; var v = Math.round(p.value); return v > 0 ? '+' + v : v.toString(); }"
+)
+fmt_pm_dec = JsCode(
+    "function(p) { if (p.value == null) return ''; var v = Number(p.value); if (Math.abs(v) < 0.05) return '0.0'; return v > 0 ? '+' + v.toFixed(1) : v.toFixed(1); }"
+)
+
+for col in tabela.columns:
+    if col in ["#", "Lineup", "Time"]:
+        continue
+
+    titulo_visivel = col.strip()
+    estilo_celula = {"textAlign": "center"}
+    if col in cols_verdes:
+        estilo_celula["backgroundColor"] = "rgba(46, 204, 113, 0.16)"
+    elif col in cols_vermelhas:
+        estilo_celula["backgroundColor"] = "rgba(231, 76, 60, 0.16)"
+
+    kwargs_col = {
+        "headerName": titulo_visivel,
+        "cellStyle": estilo_celula,
+        "width": 74 if len(titulo_visivel) <= 4 else 88,
+    }
+
+    if titulo_visivel in ["+/-", "NETRTG"]:
+        kwargs_col["valueFormatter"] = fmt_pm_int if fmt_decimais == 0 else fmt_pm_dec
+    elif titulo_visivel == "JO":
+        kwargs_col["valueFormatter"] = fmt_int
+        kwargs_col["width"] = 62
+    elif "FTA Rate" in titulo_visivel:
+        kwargs_col["valueFormatter"] = fmt_dec3
+        kwargs_col["width"] = 90
+    elif "%" in titulo_visivel:
+        kwargs_col["valueFormatter"] = fmt_pct
+        kwargs_col["width"] = 78
+    elif titulo_visivel in ["PACE", "OFFRTG", "DEFRTG"]:
+        kwargs_col["valueFormatter"] = fmt_dec1
+        kwargs_col["width"] = 82
+    elif titulo_visivel == "Minutos":
+        kwargs_col["width"] = 84
+    else:
+        kwargs_col["valueFormatter"] = fmt_int if fmt_decimais == 0 else fmt_dec1
+
+    gb.configure_column(col, **kwargs_col)
+
+gb.configure_grid_options(
+    domLayout="normal",
+    rowHeight=34,
+    headerHeight=38,
+    suppressMovableColumns=True,
+    animateRows=False,
+)
+
+grid_options = gb.build()
+
+custom_css = {
+    ".ag-header-cell-label": {"justify-content": "center"},
+    ".ag-pinned-left-header .ag-header-cell:nth-child(2) .ag-header-cell-label": {"justify-content": "flex-start"},
+}
+
+altura_tabela = min(max(len(tabela) * 34 + 44, 180), 520)
+
+AgGrid(
+    tabela,
+    gridOptions=grid_options,
+    height=altura_tabela,
+    theme="streamlit",
+    allow_unsafe_jscode=True,
+    custom_css=custom_css,
+    fit_columns_on_grid_load=False,
+    reload_data=True,
+)
 
 # --- RODAPÉ COM IMAGEM ---
 exibir_banner("footerNBB", tipo="footer")
