@@ -13,10 +13,6 @@ st.set_page_config(page_title="LNB Lineups", layout="wide")
 st.markdown(
     """
     <style>
-        [data-testid="stSidebar"], [data-testid="stSidebar"] * {
-            font-family: "Consolas", "Courier New", monospace !important;
-            font-size: 13px !important;
-        }
         .block-container {
             padding-top: 1.2rem !important;
             padding-bottom: 1.5rem !important;
@@ -202,7 +198,7 @@ df = load_data(planilha, os.path.getmtime(planilha))
 
 st.markdown(
     """
-    <h1 style="text-align: left; font-size: 24px; font-weight: 700; margin-top: 0px; margin-bottom: 10px; font-family: 'Consolas', 'Courier New', monospace;">
+    <h1 style="text-align: left; font-size: 28px; font-weight: 700; margin-top: 0px; margin-bottom: 12px;">
         NBB CAIXA 2026/2027
     </h1>
     """,
@@ -524,7 +520,7 @@ legenda_extra = (
 
 st.markdown(
     f"""
-    <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap;">
+    <div style="display: flex; gap: 18px; align-items: center; margin-bottom: 8px; font-size: 13px; flex-wrap: wrap;">
         <span style="display: inline-flex; align-items: center; gap: 6px;">
             <span style="width: 14px; height: 14px; background-color: rgba(46, 204, 113, 0.28); border: 1px solid rgba(46, 204, 113, 0.6); border-radius: 3px; display: inline-block;"></span>
             <strong>Ofensivas</strong>
