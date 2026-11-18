@@ -109,6 +109,24 @@ def chave_num_atleta(nome_str):
     return (num, str(nome_str).strip())
 
 
+def limpar_valor_str(val):
+    if pd.isna(val):
+        return np.nan
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
+    return str(val).strip()
+
+
+def chave_ordenacao_mista(val):
+    s = str(val).strip()
+    m = re.search(r"\d+", s)
+    if s.isdigit():
+        return (0, int(s), s)
+    if m:
+        return (1, int(m.group()), s)
+    return (2, 999999, s)
+
+
 @st.cache_data
 def load_data(planilha, mtime):
     if planilha.lower().endswith(".csv"):
@@ -117,6 +135,8 @@ def load_data(planilha, mtime):
         df = pd.read_excel(planilha)
 
     df["DUR_S"] = df["D"].apply(dur_to_sec)
+    df["ID"] = df["ID"].apply(limpar_valor_str)
+    df["P"] = df["P"].apply(limpar_valor_str)
     return df
 
 
@@ -177,10 +197,10 @@ todos_atletas = sorted(
 )
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
-jogos = sorted(df_time["ID"].dropna().unique())
+jogos = sorted(df_time["ID"].dropna().unique(), key=chave_ordenacao_mista)
 jogos_sel = st.sidebar.multiselect("Jogos", jogos, default=jogos)
 
-quartos = sorted(df_time["P"].dropna().unique())
+quartos = sorted(df_time["P"].dropna().unique(), key=chave_ordenacao_mista)
 quartos_sel = st.sidebar.multiselect("Períodos", quartos, default=quartos)
 
 col_f1, col_f2 = st.sidebar.columns(2)
