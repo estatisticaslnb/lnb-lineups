@@ -26,9 +26,16 @@ st.markdown(
         }
         [data-testid="stSidebar"] h2 {
             font-size: 18px !important;
+            margin-top: 0px !important;
+            padding-top: 0px !important;
+        }
+        [data-testid="stSidebarHeader"] {
+            height: 1.8rem !important;
+            padding-top: 0.4rem !important;
+            padding-bottom: 0rem !important;
         }
         [data-testid="stSidebarUserContent"] {
-            padding-top: 1.2rem !important;
+            padding-top: 0.2rem !important;
         }
         header[data-testid="stHeader"] {
             background: transparent !important;
@@ -560,9 +567,12 @@ def fmt_plus_minus(val):
         return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
 
 
+max_chars_lineup = int(agg["Lineup"].astype(str).str.len().max()) if not agg.empty else 20
+largura_lineup = min(max(int(max_chars_lineup * 9.0 + 36), 160), 620)
+
 formatos = {}
 col_config = {
-    "_index": st.column_config.TextColumn("Lineup", alignment="left")
+    "_index": st.column_config.TextColumn("Lineup", alignment="left", width=largura_lineup)
 }
 
 for col in tabela.columns:
