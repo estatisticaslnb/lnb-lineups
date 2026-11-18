@@ -567,8 +567,8 @@ def fmt_plus_minus(val):
         return f"+{v:.1f}" if v > 0 else f"{v:.1f}"
 
 
-max_chars_lineup = int(agg["Lineup"].astype(str).str.len().max()) if not agg.empty else 20
-largura_lineup = min(max(int(max_chars_lineup * 9.0 + 36), 160), 620)
+chars_ref = float(agg["Lineup"].astype(str).str.len().quantile(0.98)) if not agg.empty else 20.0
+largura_lineup = min(max(int(chars_ref * 7.0 + 24), 140), 520)
 
 formatos = {}
 col_config = {
