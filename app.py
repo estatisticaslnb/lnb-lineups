@@ -103,7 +103,7 @@ def aplicar_css_global():
     )
 
 
-@st.cache_data
+@st.cache_data(max_entries=4, show_spinner=False)
 def carregar_banner_html(prefixo, tipo="header"):
     img_path = next(
         (
@@ -241,7 +241,7 @@ def gerar_combinacoes_cached(jogadores_tuple, r):
 # ==============================================================================
 # 3. CARREGAMENTO E MOTOR DE AGREGAÇÃO (CACHEADO)
 # ==============================================================================
-@st.cache_data
+@st.cache_data(max_entries=2, show_spinner=False)
 def load_data(planilha, mtime):
     df = pd.read_csv(planilha) if planilha.lower().endswith(".csv") else pd.read_excel(planilha)
     df["DUR_S"] = df["D"].apply(dur_to_sec)
@@ -252,7 +252,7 @@ def load_data(planilha, mtime):
     return df
 
 
-@st.cache_data
+@st.cache_data(max_entries=128, show_spinner=False)
 def agregar_lineups(
     planilha, mtime, times_sel, tamanho_comb, atletas_sel, jogos_sel, quartos_sel, mando_sel
 ):
@@ -486,8 +486,6 @@ tamanho_comb = OPCOES_TAMANHO[tamanho_label]
 todos_atletas = sorted({p for tup in df_opcoes["JOGADORES_TUPLE"] for p in tup}, key=chave_num_atleta)
 atletas_sel = st.sidebar.multiselect("Filtrar por Atleta(s) em Quadra", todos_atletas)
 
-# Lê o estado atual de mando antes de montar Jogos para manter o widget abaixo de Jogos
-# e ainda assim filtrar dinamicamente as opções de partidas
 mando_atual = st.session_state.get("mando_sel", "Ambos")
 df_opcoes_mando = df_opcoes[df_opcoes["MANDO"] == mando_atual] if mando_atual != "Ambos" else df_opcoes
 
@@ -511,15 +509,15 @@ col_f1, col_f2 = st.sidebar.columns(2)
 min_jogos = col_f1.number_input("Mín. Jogos", min_value=1, value=1, step=1)
 min_minutos = col_f2.number_input("Mín. Minutos", min_value=0, value=0, step=1)
 
-# Execução da agregação cacheada (sempre ordenada por minutos totais acumulados)
+# Execução da agregação cacheada (tuplas ordenadas maximizam acerto de cache entre usuários)
 agg = agregar_lineups(
     planilha,
     mtime_planilha,
-    tuple(times_sel),
+    tuple(sorted(times_sel)),
     tamanho_comb,
-    tuple(atletas_sel),
-    tuple(jogos_sel),
-    tuple(quartos_sel),
+    tuple(sorted(atletas_sel)),
+    tuple(sorted(jogos_sel)),
+    tuple(sorted(quartos_sel)),
     mando_sel,
 )
 
@@ -665,6 +663,35 @@ for col in tabela.columns:
 
 refresh_rank_js = JsCode("function(params) { params.api.refreshCells({columns: ['rank_col'], force: true}); }")
 
+# Desktop (>= 768px): # -> Lineup -> Time fixos na esquerda
+# Celular (< 768px): # -> Time fixos na esquerda e Lineup deslizando livremente
+ajustar_mobile_js = JsCode(
+    """
+    function(params) {
+        var isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            params.api.applyColumnState({
+                state: [
+                    { colId: 'rank_col', pinned: 'left' },
+                    { colId: 'Time', pinned: 'left' },
+                    { colId: 'Lineup', pinned: null }
+                ],
+                applyOrder: true
+            });
+        } else {
+            params.api.applyColumnState({
+                state: [
+                    { colId: 'rank_col', pinned: 'left' },
+                    { colId: 'Lineup', pinned: 'left' },
+                    { colId: 'Time', pinned: 'left' }
+                ],
+                applyOrder: true
+            });
+        }
+    }
+    """
+)
+
 gb.configure_grid_options(
     domLayout="normal",
     rowHeight=29,
@@ -673,6 +700,8 @@ gb.configure_grid_options(
     animateRows=False,
     onSortChanged=refresh_rank_js,
     onFilterChanged=refresh_rank_js,
+    onGridReady=ajustar_mobile_js,
+    onGridSizeChanged=ajustar_mobile_js,
 )
 
 grid_options = gb.build()
