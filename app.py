@@ -48,10 +48,10 @@ OPCOES_TAMANHO = {
 }
 
 COLS_SOMA = [
-    "DUR_S", "PTS", "2PM", "2PA", "3PM", "3PA", "FTM", "FTA",
-    "OR", "DR", "REB", "AST", "TO", "STL", "BLK", "PF",
-    "PTS_A", "2PM_A", "2PA_A", "3PM_A", "3PA_A", "FTM_A", "FTA_A",
-    "OR_A", "DR_A", "REB_A", "AST_A", "TO_A", "STL_A", "BLK_A", "PF_A", "+/-",
+    "DUR_S", "2PM", "2PA", "3PM", "3PA", "FTM", "FTA",
+    "OR", "DR", "AST", "TO", "STL", "BLK", "PF",
+    "2PM_A", "2PA_A", "3PM_A", "3PA_A", "FTM_A", "FTA_A",
+    "OR_A", "DR_A", "AST_A", "TO_A", "STL_A", "BLK_A", "PF_A",
 ]
 
 LIMITE_PADRAO_LINHAS = 250
@@ -297,6 +297,13 @@ def agregar_lineups(
         JO=("ID", "nunique"),
         **{c: (c, "sum") for c in COLS_SOMA},
     )
+
+    # Pontos, Plus/Minus e Rebotes Totais calculados por fórmula
+    agg["PTS"] = 2 * agg["2PM"] + 3 * agg["3PM"] + agg["FTM"]
+    agg["PTS_A"] = 2 * agg["2PM_A"] + 3 * agg["3PM_A"] + agg["FTM_A"]
+    agg["+/-"] = agg["PTS"] - agg["PTS_A"]
+    agg["REB"] = agg["OR"] + agg["DR"]
+    agg["REB_A"] = agg["OR_A"] + agg["DR_A"]
 
     # Estatísticas derivadas base e Posses (Fórmula LNB: coeficiente 4/9)
     agg["FGA"] = agg["2PA"] + agg["3PA"]
